@@ -1,0 +1,37 @@
+<%- include('partials/header') %>
+<% var isAthlete = currentUser.role === 'athlete'; %>
+<div class="thread">
+  <p><a href="/messages">← All messages</a></p>
+  <div class="card thread-head">
+    <% if (isAthlete) { %>
+      <% if (conversation.coach_id) { %>
+        <a class="team-avatar" href="/coaches/<%= conversation.coach_id %>" aria-hidden="true"><%= conversation.coach_name.trim().charAt(0).toUpperCase() %></a>
+        <div><h1><a class="post-team" href="/coaches/<%= conversation.coach_id %>"><%= conversation.coach_name %></a></h1>
+          <div class="muted small"><%= [conversation.coach_title, conversation.school].filter(Boolean).join(', ') %></div></div>
+      <% } else { %>
+        <a class="team-avatar" href="/teams/<%= conversation.team_id %>" aria-hidden="true"><%= conversation.school.trim().charAt(0).toUpperCase() %></a>
+        <div><h1><a class="post-team" href="/teams/<%= conversation.team_id %>"><%= conversation.school %> <%= conversation.sport %></a></h1>
+          <div class="muted small">Team inbox. Any coach on the team can reply.</div></div>
+      <% } %>
+    <% } else { %>
+      <a class="team-avatar athlete-avatar" href="/athletes/<%= conversation.athlete_id %>" aria-hidden="true"><%= conversation.athlete_name.trim().charAt(0).toUpperCase() %></a>
+      <div><h1><a class="post-team" href="/athletes/<%= conversation.athlete_id %>"><%= conversation.athlete_name %></a></h1>
+        <div class="muted small"><%= conversation.team_id ? 'Sent to the ' + conversation.school + ' team inbox' : 'Direct message' %></div></div>
+    <% } %>
+  </div>
+
+  <div class="bubbles">
+    <% messages.forEach(function (m, i) { var mine = m.sender_id === currentUser.id; %>
+      <div class="bubble<%= mine ? ' mine' : '' %>"<% if (i === messages.length - 1) { %> id="latest"<% } %>>
+        <div class="bubble-text"><%= m.body %></div>
+        <div class="bubble-meta"><%= mine ? 'You' : m.sender_name %> · <%= timeAgo(m.created_at) %></div>
+      </div>
+    <% }) %>
+  </div>
+
+  <form method="post" action="/messages/<%= conversation.id %>" class="form card">
+    <label>Reply <textarea name="body" rows="3" required maxlength="5000"></textarea></label>
+    <button class="btn">Send</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

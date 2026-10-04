@@ -1,0 +1,32 @@
+<%- include('partials/header') %>
+<div class="thread">
+  <h1>Messages</h1>
+  <% if (!conversations.length) { %>
+    <div class="card empty">
+      <% if (currentUser.role === 'athlete') { %>
+        <p>No conversations yet. Reach out to a coach or a team from their page.</p>
+        <p><a class="btn" href="/teams">Browse teams</a></p>
+      <% } else { %>
+        <p>No messages yet. Athletes can message you directly or through your team's inbox.</p>
+      <% } %>
+    </div>
+  <% } %>
+  <% conversations.forEach(function (c) {
+       var isAthlete = currentUser.role === 'athlete';
+       var name = isAthlete ? (c.coach_id ? c.coach_name : c.school + ' ' + c.sport) : c.athlete_name;
+       var detail = isAthlete
+         ? (c.coach_id ? [c.coach_title, c.school].filter(Boolean).join(', ') : 'Team inbox')
+         : (c.team_id ? 'Via ' + c.school + ' team inbox' : 'Direct message');
+  %>
+    <a class="card inbox-row<%= c.unread ? ' unread' : '' %>" href="/messages/<%= c.id %>#latest">
+      <span class="team-avatar<%= !isAthlete ? ' athlete-avatar' : '' %>" aria-hidden="true"><%= name.trim().charAt(0).toUpperCase() %></span>
+      <div class="grow">
+        <strong><%= name %></strong> <span class="muted small"><%= detail %></span>
+        <div class="preview small<%= c.unread ? '' : ' muted' %>"><%= c.last_sender_id === currentUser.id ? 'You: ' : '' %><%= c.last_body %></div>
+      </div>
+      <div class="small muted"><%= timeAgo(c.last_at) %></div>
+      <% if (c.unread) { %><span class="nav-badge" aria-label="<%= c.unread %> unread"><%= c.unread %></span><% } %>
+    </a>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

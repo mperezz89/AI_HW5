@@ -141,3 +141,24 @@ video { width: 100%; aspect-ratio: 16 / 9; background: #000; display: block; }
 .tile-badge, .tile-likes { position: absolute; color: #fff; font-size: 0.85rem; font-weight: 700; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
 .tile-badge { top: 8px; right: 10px; }
 .tile-likes { bottom: 8px; left: 10px; }
+
+/* Social */
+.follow-stats { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 10px 0; }
+.follow-stats a { color: var(--text); text-decoration: none; }
+.athlete-avatar { background: var(--ok); }
+.person-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 10px; }
+
+/* Messages */
+.nav-badge { display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: #e0245e; color: #fff; font-size: 0.75rem; font-weight: 700; text-align: center; line-height: 18px; }
+.inbox-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 8px; text-decoration: none; color: var(--text); }
+.inbox-row.unread { border-color: var(--accent); }
+.inbox-row .preview { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread { max-width: 680px; margin: 0 auto; }
+.thread-head { display: flex; align-items: center; gap: 12px; }
+.thread-head h1 { font-size: 1.3rem; margin: 0; }
+.bubbles { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+.bubble { max-width: 80%; padding: 8px 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); overflow-wrap: anywhere; }
+.bubble-text { white-space: pre-wrap; }
+.bubble.mine { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.bubble-meta { font-size: 0.75rem; opacity: 0.75; margin-top: 2px; }
+.notice { font-size: 0.85rem; color: var(--muted); border-left: 3px solid var(--border); padding-left: 10px; }

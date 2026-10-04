@@ -1,12 +1,10 @@
 <%- include('partials/header') %>
 <div class="feed-layout">
   <section class="feed">
-    <% if (isAthlete) { %>
-      <nav class="tabs">
-        <a href="/feed?tab=following" class="<%= tab === 'following' ? 'active' : '' %>">Following</a>
-        <a href="/feed?tab=discover" class="<%= tab === 'discover' ? 'active' : '' %>">Discover</a>
-      </nav>
-    <% } %>
+    <nav class="tabs">
+      <a href="/feed?tab=following" class="<%= tab === 'following' ? 'active' : '' %>">Following</a>
+      <a href="/feed?tab=discover" class="<%= tab === 'discover' ? 'active' : '' %>">Discover</a>
+    </nav>
     <% if (tab === 'discover') { %>
       <form method="get" action="/feed" class="sport-filter">
         <input type="hidden" name="tab" value="discover">
@@ -20,21 +18,28 @@
       </form>
     <% } %>
 
-    <% if (!posts.length) { %>
+    <% if (!items.length) { %>
       <div class="card empty">
         <% if (tab === 'following' && !followingCount) { %>
-          <p>You're not following any teams yet.</p>
-          <p><a class="btn" href="/teams">Find teams to follow</a></p>
+          <p>You're not following anyone yet. Follow teams, coaches, and athletes to fill your feed.</p>
+          <p class="actions" style="justify-content: center">
+            <% if (isAthlete) { %><a class="btn" href="/teams">Find teams</a><% } %>
+            <a class="btn btn-secondary" href="/athletes">Find athletes</a>
+          </p>
         <% } else if (tab === 'following') { %>
-          <p>The teams you follow haven't posted yet. Check <a href="/feed?tab=discover">Discover</a> for more.</p>
+          <p>Nothing new from the people and teams you follow. Check <a href="/feed?tab=discover">Discover</a> for more.</p>
         <% } else { %>
           <p>No team posts<%= sport ? ' for ' + sport : '' %> yet.<% if (sport) { %> <a href="/feed?tab=discover&sport=all">See all sports</a>.<% } %></p>
         <% } %>
       </div>
     <% } %>
 
-    <% posts.forEach(function (post) { %>
-      <%- include('partials/post-card', { post: post, back: '/feed?tab=' + tab + (tab === 'discover' ? '&sport=' + encodeURIComponent(sport || 'all') : '') }) %>
+    <% items.forEach(function (item) { %>
+      <% if (item.kind === 'post') { %>
+        <%- include('partials/post-card', { post: item, back: back }) %>
+      <% } else { %>
+        <%- include('partials/highlight-card', { video: item }) %>
+      <% } %>
     <% }) %>
 
     <% if (nextPage) { %><p class="center"><a class="btn btn-secondary" href="<%= nextPage %>">Load more</a></p><% } %>

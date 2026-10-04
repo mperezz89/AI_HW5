@@ -1,0 +1,15 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1>Message <%= recipient.label %></h1>
+  <p class="muted"><%= recipient.detail %></p>
+  <% if (recipient.kind === 'team') { %>
+    <p class="notice">Messages to a team go to a shared inbox that every coach on the team can read and reply to.</p>
+  <% } %>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <form method="post" action="/messages" class="form">
+    <input type="hidden" name="<%= recipient.kind %>" value="<%= recipient.id %>">
+    <label>Message <textarea name="body" rows="6" required maxlength="5000" placeholder="Introduce yourself: your sport, position, class, and why you're interested in the program."><%= body %></textarea></label>
+    <button class="btn">Send</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

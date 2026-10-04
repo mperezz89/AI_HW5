@@ -1,0 +1,9 @@
+<div class="follow-stats">
+  <a href="/people/<%= personId %>/followers"><strong><%= social.followers %></strong> follower<%= social.followers === 1 ? '' : 's' %></a>
+  <a href="/people/<%= personId %>/following"><strong><%= social.following %></strong> following</a>
+  <% if (currentUser && currentUser.id !== personId) { %>
+    <form method="post" action="/people/<%= personId %>/follow" class="inline">
+      <button class="btn btn-small<%= social.isFollowing ? ' btn-secondary' : '' %>"><%= social.isFollowing ? 'Following' : 'Follow' %></button>
+    </form>
+  <% } %>
+</div>

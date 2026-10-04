@@ -11,6 +11,7 @@
     </div>
     <% if (isOwner) { %><a class="btn btn-secondary" href="/profile/edit">Edit profile</a><% } %>
   </div>
+  <%- include('partials/follow-stats', { personId: athlete.id, social: social }) %>
   <dl class="stats">
     <% if (athlete.athlete_code) { %><div><dt>Athlete ID</dt><dd class="athlete-id"><%= athlete.athlete_code %></dd></div><% } %>
     <% if (athlete.position_rank) { %><div><dt>Position rank</dt><dd>#<%= athlete.position_rank %></dd></div><% } %>
@@ -45,7 +46,7 @@
     <article class="card video-card">
       <%- include('partials/video-player', { filename: v.filename, mime: v.mime_type }) %>
       <h3><a href="/videos/<%= v.id %>"><%= v.title %></a></h3>
-      <p class="muted small"><%= [v.opponent && ('vs. ' + v.opponent), v.game_date].filter(Boolean).join(' · ') %> · <%= v.views %> views</p>
+      <p class="muted small"><%= [v.opponent && ('vs. ' + v.opponent), v.game_date, v.views + ' views'].filter(Boolean).join(' · ') %></p>
     </article>
   <% }) %>
 </div>

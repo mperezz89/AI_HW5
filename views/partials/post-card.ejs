@@ -27,6 +27,6 @@
     <% if (post.caption) { %>
       <p class="pre"><a class="post-team" href="/teams/<%= post.team_id %>"><%= post.school %></a> <%= post.caption %></p>
     <% } %>
-    <p class="muted small">Posted by <%= post.author_name %></p>
+    <p class="muted small">Posted by <a href="/coaches/<%= post.author_id %>"><%= post.author_name %></a></p>
   </div>
 </article>

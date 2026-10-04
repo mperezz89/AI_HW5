@@ -106,6 +106,45 @@ CREATE TABLE IF NOT EXISTS team_follows (
   PRIMARY KEY (team_id, athlete_id)
 );
 CREATE INDEX IF NOT EXISTS idx_follows_athlete ON team_follows(athlete_id);
+
+-- People following people (athletes and coaches).
+CREATE TABLE IF NOT EXISTS user_follows (
+  follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  followee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (follower_id, followee_id),
+  CHECK (follower_id != followee_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_follows_followee ON user_follows(followee_id);
+
+-- A direct-message thread between an athlete and either one coach or a whole team.
+CREATE TABLE IF NOT EXISTS conversations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  athlete_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  coach_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  team_id INTEGER REFERENCES teams(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  CHECK ((coach_id IS NULL) != (team_id IS NULL))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_athlete_coach ON conversations(athlete_id, coach_id) WHERE coach_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conv_athlete_team ON conversations(athlete_id, team_id) WHERE team_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+
+-- The last message each participant has seen, for unread counts.
+CREATE TABLE IF NOT EXISTS conversation_reads (
+  conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  last_read_message_id INTEGER NOT NULL,
+  PRIMARY KEY (conversation_id, user_id)
+);
 `;
 
 // Columns added after the first release; ALTER TABLE brings older databases up to date.

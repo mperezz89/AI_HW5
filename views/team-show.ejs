@@ -6,14 +6,19 @@
     <p class="muted"><%= [team.sport, team.division].filter(Boolean).join(' · ') %></p>
     <p class="team-counts"><strong><%= posts.length %></strong> post<%= posts.length === 1 ? '' : 's' %> · <strong><%= followers %></strong> follower<%= followers === 1 ? '' : 's' %></p>
     <% if (coaches.length) { %>
-      <p class="small muted">Coaches: <%= coaches.map(function (c) { return c.name + (c.title ? ' (' + c.title + ')' : ''); }).join(', ') %></p>
+      <p class="small muted">Coaches:
+        <% coaches.forEach(function (c, i) { %><a href="/coaches/<%= c.id %>"><%= c.name %></a><%= c.title ? ' (' + c.title + ')' : '' %><%= i < coaches.length - 1 ? ', ' : '' %><% }) %>
+      </p>
     <% } %>
   </div>
   <div>
     <% if (currentUser.role === 'athlete') { %>
-      <form method="post" action="/teams/<%= team.id %>/follow">
-        <button class="btn<%= following ? ' btn-secondary' : '' %>"><%= following ? 'Following' : 'Follow' %></button>
-      </form>
+      <div class="actions flush">
+        <form method="post" action="/teams/<%= team.id %>/follow" class="inline">
+          <button class="btn<%= following ? ' btn-secondary' : '' %>"><%= following ? 'Following' : 'Follow' %></button>
+        </form>
+        <a class="btn btn-secondary" href="/messages/new?team=<%= team.id %>">Message team</a>
+      </div>
     <% } else if (isTeamCoach) { %>
       <a class="btn" href="/posts/new">New post</a>
     <% } %>

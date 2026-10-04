@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 const session = require('express-session');
 const { openDatabase } = require('./db');
+const { unreadCount } = require('./routes/messages');
 const { SPORTS, US_STATES, stars, timeAgo } = require('./constants');
 
 function createApp({
@@ -40,6 +41,7 @@ function createApp({
       ? db.prepare('SELECT id, email, role, name FROM users WHERE id = ?').get(req.session.userId)
       : null;
     res.locals.currentUser = req.user;
+    res.locals.unreadMessages = req.user ? unreadCount(db, req.user) : 0;
     res.locals.flash = req.session.flash;
     delete req.session.flash;
     next();
@@ -51,6 +53,8 @@ function createApp({
   app.use(require('./routes/athletes'));
   app.use(require('./routes/visits'));
   app.use(require('./routes/feed'));
+  app.use(require('./routes/people'));
+  app.use(require('./routes/messages'));
 
   app.get('/', (req, res) => {
     if (req.user) return res.redirect(req.user.role === 'athlete' ? '/feed' : '/dashboard');

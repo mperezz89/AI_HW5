@@ -28,13 +28,7 @@ function coachTeam(req) {
 }
 
 // Posts matching `where`, newest first, with team info and like counts for the viewer.
-function findPosts(db, viewerId, { where = [], params = [], before, limit = PAGE_SIZE }) {
-  const clauses = [...where];
-  const args = [...params];
-  if (before) {
-    clauses.push('p.id < ?');
-    args.push(Number(before));
-  }
+function findPosts(db, viewerId, { where = [], params = [], limit = PAGE_SIZE, offset = 0 }) {
   return db
     .prepare(
       `SELECT p.*, t.school, t.sport, t.division, u.name AS author_name,
@@ -43,38 +37,74 @@ function findPosts(db, viewerId, { where = [], params = [], before, limit = PAGE
        FROM posts p
        JOIN teams t ON t.id = p.team_id
        JOIN users u ON u.id = p.author_id
-       ${clauses.length ? 'WHERE ' + clauses.join(' AND ') : ''}
+       ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
        ORDER BY p.id DESC
-       LIMIT ?`
+       LIMIT ? OFFSET ?`
     )
-    .all(viewerId, ...args, limit);
+    .all(viewerId, ...params, limit, offset);
+}
+
+// The Following tab: posts from followed teams and coaches, plus highlight videos from followed
+// athletes, newest first. Returns items shaped { kind: 'post' | 'highlight', ...row }.
+function followingItems(db, user, { limit, offset }) {
+  const refs = db
+    .prepare(
+      `SELECT 'post' AS kind, p.id, p.created_at FROM posts p
+       WHERE p.team_id IN (SELECT team_id FROM team_follows WHERE athlete_id = ?)
+          OR p.author_id IN (SELECT followee_id FROM user_follows WHERE follower_id = ?)
+       UNION ALL
+       SELECT 'highlight', v.id, v.created_at FROM videos v
+       WHERE v.athlete_id IN (SELECT followee_id FROM user_follows WHERE follower_id = ?)
+       ORDER BY created_at DESC, id DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(user.id, user.id, user.id, limit, offset);
+
+  const ids = (kind) => refs.filter((r) => r.kind === kind).map((r) => r.id);
+  const postIds = ids('post');
+  const videoIds = ids('highlight');
+  const posts = postIds.length
+    ? findPosts(db, user.id, { where: [`p.id IN (${postIds.map(() => '?').join(',')})`], params: postIds, limit: postIds.length })
+    : [];
+  const videos = videoIds.length
+    ? db
+        .prepare(
+          `SELECT v.*, u.name AS athlete_name, a.sport AS athlete_sport, a.position, a.high_school, a.star_rating
+           FROM videos v JOIN users u ON u.id = v.athlete_id LEFT JOIN athlete_profiles a ON a.user_id = v.athlete_id
+           WHERE v.id IN (${videoIds.map(() => '?').join(',')})`
+        )
+        .all(...videoIds)
+    : [];
+  const byKey = new Map([
+    ...posts.map((p) => [`post:${p.id}`, { kind: 'post', ...p }]),
+    ...videos.map((v) => [`highlight:${v.id}`, { kind: 'highlight', ...v }]),
+  ]);
+  return refs.map((r) => byKey.get(`${r.kind}:${r.id}`));
 }
 
 router.get('/feed', requireAuth, (req, res) => {
   const db = req.app.locals.db;
   const isAthlete = req.user.role === 'athlete';
-  const followingCount = isAthlete
-    ? db.prepare('SELECT COUNT(*) AS n FROM team_follows WHERE athlete_id = ?').get(req.user.id).n
-    : 0;
+  const followingCount =
+    db.prepare('SELECT COUNT(*) AS n FROM team_follows WHERE athlete_id = ?').get(req.user.id).n +
+    db.prepare('SELECT COUNT(*) AS n FROM user_follows WHERE follower_id = ?').get(req.user.id).n;
   const mySport = isAthlete
     ? (db.prepare('SELECT sport FROM athlete_profiles WHERE user_id = ?').get(req.user.id) || {}).sport
     : null;
 
   let tab = req.query.tab;
-  if (!isAthlete || !['following', 'discover'].includes(tab)) tab = isAthlete && followingCount ? 'following' : 'discover';
+  if (!['following', 'discover'].includes(tab)) tab = followingCount ? 'following' : 'discover';
   // Discover defaults to the athlete's own sport; "all" shows every sport.
   const sport = req.query.sport === 'all' ? '' : req.query.sport || mySport || '';
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const window = { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
 
-  const where = [];
-  const params = [];
-  if (tab === 'following') {
-    where.push('p.team_id IN (SELECT team_id FROM team_follows WHERE athlete_id = ?)');
-    params.push(req.user.id);
-  } else if (sport) {
-    where.push('t.sport = ?');
-    params.push(sport);
-  }
-  const posts = findPosts(db, req.user.id, { where, params, before: req.query.before });
+  const items =
+    tab === 'following'
+      ? followingItems(db, req.user, window)
+      : findPosts(db, req.user.id, { where: sport ? ['t.sport = ?'] : [], params: sport ? [sport] : [], ...window }).map(
+          (p) => ({ kind: 'post', ...p })
+        );
 
   const suggestions = isAthlete
     ? db
@@ -90,9 +120,10 @@ router.get('/feed', requireAuth, (req, res) => {
 
   const query = new URLSearchParams({ tab });
   if (tab === 'discover') query.set('sport', sport || 'all');
-  const nextPage = posts.length === PAGE_SIZE ? `/feed?${query}&before=${posts[posts.length - 1].id}` : null;
+  const back = `/feed?${query}${page > 1 ? `&page=${page}` : ''}`;
+  const nextPage = items.length === PAGE_SIZE ? `/feed?${query}&page=${page + 1}` : null;
 
-  res.render('feed', { title: 'Feed', posts, tab, sport, followingCount, suggestions, nextPage, isAthlete });
+  res.render('feed', { title: 'Feed', items, tab, sport, followingCount, suggestions, nextPage, isAthlete, back });
 });
 
 router.get('/teams', requireAuth, (req, res) => {

@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+<div class="thread">
+  <p><a href="<%= personPath %>">← <%= person.name %></a></p>
+  <nav class="tabs">
+    <a href="/people/<%= person.id %>/followers" class="<%= listingFollowers ? 'active' : '' %>">Followers</a>
+    <a href="/people/<%= person.id %>/following" class="<%= listingFollowers ? '' : 'active' %>">Following</a>
+  </nav>
+  <% if (!people.length && !teams.length) { %>
+    <p class="muted"><%= listingFollowers ? 'No followers yet.' : 'Not following anyone yet.' %></p>
+  <% } %>
+  <% teams.forEach(function (t) { %>
+    <div class="card person-row">
+      <a class="team-avatar" href="/teams/<%= t.id %>" aria-hidden="true"><%= t.school.trim().charAt(0).toUpperCase() %></a>
+      <div class="grow">
+        <a class="post-team" href="/teams/<%= t.id %>"><%= t.school %></a>
+        <div class="muted small">Team · <%= t.sport %></div>
+      </div>
+    </div>
+  <% }) %>
+  <% people.forEach(function (p) { %>
+    <div class="card person-row">
+      <a class="team-avatar<%= p.role === 'athlete' ? ' athlete-avatar' : '' %>" href="<%= profilePath(p) %>" aria-hidden="true"><%= p.name.trim().charAt(0).toUpperCase() %></a>
+      <div class="grow">
+        <a class="post-team" href="<%= profilePath(p) %>"><%= p.name %></a>
+        <div class="muted small">
+          <%= p.role === 'athlete'
+            ? ['Athlete', p.sport, p.position, p.high_school].filter(Boolean).join(' · ')
+            : ['Coach', p.title, p.school].filter(Boolean).join(' · ') %>
+        </div>
+      </div>
+      <% if (p.id !== currentUser.id) { %>
+        <form method="post" action="/people/<%= p.id %>/follow" class="inline">
+          <input type="hidden" name="back" value="/people/<%= person.id %>/<%= listingFollowers ? 'followers' : 'following' %>">
+          <button class="btn btn-small<%= p.viewer_follows ? ' btn-secondary' : '' %>"><%= p.viewer_follows ? 'Following' : 'Follow' %></button>
+        </form>
+      <% } %>
+    </div>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

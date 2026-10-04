@@ -1,0 +1,34 @@
+<%- include('partials/header') %>
+<section class="card team-head">
+  <div class="team-avatar team-avatar-lg" aria-hidden="true"><%= coach.name.trim().charAt(0).toUpperCase() %></div>
+  <div class="grow">
+    <h1><%= coach.name %></h1>
+    <p class="muted"><%= [coach.title, coach.school].filter(Boolean).join(' · ') || 'Coach' %></p>
+    <% if (coach.team_id) { %>
+      <p class="small">Team: <a href="/teams/<%= coach.team_id %>"><%= coach.school %> <%= coach.sport %></a><% if (coach.division) { %> · <%= coach.division %><% } %></p>
+    <% } %>
+    <%- include('partials/follow-stats', { personId: coach.id, social: social }) %>
+  </div>
+  <div class="actions flush">
+    <% if (isSelf) { %>
+      <a class="btn btn-secondary" href="/profile/edit">Edit</a>
+    <% } else if (currentUser.role === 'athlete') { %>
+      <a class="btn" href="/messages/new?coach=<%= coach.id %>">Message</a>
+    <% } %>
+  </div>
+</section>
+<h2>Posts</h2>
+<% if (!posts.length) { %><p class="muted">No posts yet.</p><% } %>
+<div class="post-grid">
+  <% posts.forEach(function (p) { %>
+    <a class="post-tile" href="/posts/<%= p.id %>" title="<%= p.caption || '' %>">
+      <% if (p.media_kind === 'image') { %>
+        <img src="/media/<%= p.media_filename %>" alt="<%= p.caption ? p.caption.slice(0, 120) : 'Post' %>" loading="lazy">
+      <% } else { %>
+        <video muted preload="metadata" playsinline><source src="/media/<%= p.media_filename %>#t=0.1" type="<%= p.mime_type %>"></video>
+        <span class="tile-badge" aria-label="Video">▶</span>
+      <% } %>
+    </a>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

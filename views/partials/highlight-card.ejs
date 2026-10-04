@@ -1,0 +1,20 @@
+<article class="post card" id="highlight-<%= video.id %>">
+  <header class="post-head">
+    <a class="team-avatar athlete-avatar" href="/athletes/<%= video.athlete_id %>" aria-hidden="true"><%= video.athlete_name.trim().charAt(0).toUpperCase() %></a>
+    <div>
+      <a class="post-team" href="/athletes/<%= video.athlete_id %>"><%= video.athlete_name %></a>
+      <% if (video.star_rating) { %><span class="stars small"><%= stars(video.star_rating) %></span><% } %>
+      <div class="muted small"><%= [video.athlete_sport, video.position, video.high_school].filter(Boolean).join(' · ') %></div>
+    </div>
+    <a class="muted small post-time" href="/videos/<%= video.id %>"><%= timeAgo(video.created_at) %></a>
+  </header>
+  <div class="post-media">
+    <video controls preload="metadata" playsinline>
+      <source src="/media/<%= video.filename %>#t=0.1" type="<%= video.mime_type %>">
+    </video>
+  </div>
+  <div class="post-body">
+    <p><span class="tag">Highlight</span> <a class="post-team" href="/videos/<%= video.id %>"><%= video.title %></a></p>
+    <p class="muted small"><%= [video.opponent && ('vs. ' + video.opponent), video.game_date, video.views + ' views'].filter(Boolean).join(' · ') %></p>
+  </div>
+</article>

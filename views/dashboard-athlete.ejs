@@ -37,12 +37,13 @@
   <article class="card request">
     <div class="request-head">
       <div>
-        <strong><%= r.coach_name %></strong><% if (r.coach_title) { %>, <%= r.coach_title %><% } %>
+        <strong><a class="post-team" href="/coaches/<%= r.coach_id %>"><%= r.coach_name %></a></strong><% if (r.coach_title) { %>, <%= r.coach_title %><% } %>
         <div class="muted small"><%= [r.school, r.division].filter(Boolean).join(' · ') || 'Program not listed' %></div>
       </div>
       <span class="status status-<%= r.status %>"><%= r.status %></span>
     </div>
     <p class="pre"><%= r.message %></p>
+    <p class="small"><a href="/messages/new?coach=<%= r.coach_id %>">Message <%= r.coach_name %></a></p>
     <p class="muted small">
       <% if (r.proposed_date) { %>Proposed visit: <%= r.proposed_date %> · <% } %>
       <% if (r.video_title) { %>Re: <a href="/videos/<%= r.video_id %>"><%= r.video_title %></a> · <% } %>

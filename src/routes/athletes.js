@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireAuth } = require('../auth');
 const { missingPreferredFields } = require('../constants');
+const { followStats } = require('./people');
 
 const router = express.Router();
 
@@ -105,6 +106,7 @@ router.get('/athletes/:id', (req, res, next) => {
     hasPending,
     preselectVideo: req.query.video || '',
     missing: isOwner ? missingPreferredFields(athlete) : [],
+    social: followStats(db, athlete.id, req.user && req.user.id),
   });
 });
 

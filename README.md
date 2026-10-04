@@ -18,6 +18,18 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 - Athletes can like posts, follow or unfollow teams, and browse a directory of teams by school and sport.
 - Each team has a page with its division, coaches, follower count, and a grid of its posts.
 
+**Following**
+- Athletes follow the college teams they're interested in.
+- Anyone can follow athletes and coaches, so athletes build a following of other athletes and coaches. Athlete and coach profiles show follower and following counts, with lists of each.
+- The **Following** feed tab shows posts from followed teams and coaches, plus new highlight videos from followed athletes.
+- Coaches have public profile pages showing their team, follow counts, and posts.
+
+**Direct messages**
+- Athletes can message a coach directly from the coach's profile or a visit request, or message a whole team from its team page.
+- A message to a team goes to a shared team inbox. Every coach on that team can read and reply to it.
+- Coaches reply to athletes but can't start a conversation; visit requests remain how coaches reach out first.
+- The inbox shows unread counts, and a badge in the navigation bar shows unread messages.
+
 **Coaches**
 - Sign up as a coach and list your school, title, sport, and division.
 - Search athletes by name, school, city, or Athlete ID. Filter by sport, position, grad year, state, and minimum star ranking, and sort by national ranking.
@@ -65,7 +77,8 @@ src/
   constants.js      Sports, states, allowed video types
   uploads.js        Shared upload middleware for videos and images
   routes/           auth, profile, videos, athletes (search/profile), visits (dashboard + requests),
-                    feed (home feed, teams, team posts, likes, follows)
+                    feed (home feed, teams, team posts, likes, follows), people (follows, coach profiles),
+                    messages (direct and team-inbox messaging)
 views/              EJS templates
 public/styles.css   Styles (light and dark mode)
 test/app.test.js    End-to-end tests
@@ -80,4 +93,6 @@ test/app.test.js    End-to-end tests
 - Verification: rankings and Athlete IDs are self-reported. Consider verifying them against an official source or labeling them as self-reported.
 - Teams: school names are typed in freely, so "Notre Dame" and "University of Notre Dame" become separate teams. Use a fixed list of schools, and verify that coaches belong to the team they post as.
 - Feed: comments, Stories-style highlights, notifications when a followed team posts, and liking without reloading the page.
-- Product: messaging, saved athletes for coaches, email notifications for new visit requests, and reporting and moderation for uploaded content.
+- Messaging safety: many athletes are minors. Add reporting and blocking, keep messages for moderation, and consider letting parents or guardians see messages and coaches' messaging rules (for example, NCAA recruiting contact periods).
+- Messaging: new messages only appear after a page reload. Add live updates and email or push notifications.
+- Product: saved athletes for coaches, email notifications for new visit requests, and reporting and moderation for uploaded content.

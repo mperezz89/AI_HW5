@@ -327,7 +327,7 @@ test('athlete home is the feed: discover by sport, follow teams, and like posts'
   assert.match(res.text, /Friday night lights/);
 
   res = await athlete('/feed?tab=following');
-  assert.match(res.text, /not following any teams yet/);
+  assert.match(res.text, /not following anyone yet/);
 
   // Follow the football team only; the Following tab shows just its posts.
   res = await athlete('/teams?sport=Football');
@@ -384,4 +384,116 @@ test('timeAgo labels', () => {
   assert.equal(timeAgo('2026-10-04 11:59:30', now), 'just now');
   assert.equal(timeAgo('2026-10-04 09:00:00', now), '3h ago');
   assert.equal(timeAgo('2026-09-20 12:00:00', now), '2w ago');
+});
+
+test('athletes build a following of athletes and coaches; Following feed shows their content', async () => {
+  // A second athlete with a highlight, and Jordan follows them plus Coach Kim.
+  const riley = client();
+  await signUp(riley, { name: 'Riley Chen', email: 'riley@example.com', role: 'athlete' });
+  let res = await riley('/profile/edit', { method: 'POST', form: { sport: 'Soccer', position: 'Striker' } });
+  const rileyId = Number(res.location.split('/').pop());
+  await riley('/videos', { method: 'POST', body: videoForm({ title: 'Hat trick vs. West' }) });
+
+  res = await coach('/teams/mine');
+  const kimId = Number((await coach(res.location)).text.match(/href="\/coaches\/(\d+)">Coach Kim/)[1]);
+
+  res = await athlete(`/people/${rileyId}/follow`, { method: 'POST' });
+  assert.equal(res.location, `/athletes/${rileyId}`);
+  await athlete(`/people/${kimId}/follow`, { method: 'POST' });
+
+  // Athlete following athlete shows on both profiles.
+  res = await riley(`/athletes/${rileyId}`);
+  assert.match(res.text, /<strong>1<\/strong> follower</);
+  res = await riley(`/people/${rileyId}/followers`);
+  assert.match(res.text, /Jordan Rivers/);
+
+  // Coaches can follow athletes too, building the athlete's following.
+  await coach(`/people/${athleteId}/follow`, { method: 'POST' });
+  await riley(`/people/${athleteId}/follow`, { method: 'POST' });
+  res = await riley(`/athletes/${athleteId}`);
+  assert.match(res.text, /<strong>2<\/strong> followers/);
+  res = await riley(`/people/${athleteId}/followers`);
+  assert.match(res.text, /Coach Kim/);
+  assert.match(res.text, /Riley Chen/);
+
+  // Following list includes people and teams.
+  res = await athlete(`/people/${athleteId}/following`);
+  assert.match(res.text, /Riley Chen/);
+  assert.match(res.text, /Coach Kim/);
+
+  // Following feed: Riley's highlight and Coach Kim's team posts, but not other teams' posts.
+  res = await athlete('/feed?tab=following');
+  assert.match(res.text, /Hat trick vs. West/);
+  assert.match(res.text, /practice clip/);
+  assert.doesNotMatch(res.text, /Friday night lights/);
+
+  // Coach profile page with follow counts; following yourself is a no-op.
+  res = await athlete(`/coaches/${kimId}`);
+  assert.match(res.text, /Assistant Coach · State University/);
+  assert.match(res.text, /<strong>1<\/strong> follower</);
+  await athlete(`/people/${athleteId}/follow`, { method: 'POST' });
+  res = await athlete(`/athletes/${athleteId}`);
+  assert.match(res.text, /<strong>2<\/strong> followers/);
+
+  // Unfollow toggles off.
+  await athlete(`/people/${rileyId}/follow`, { method: 'POST' });
+  res = await athlete('/feed?tab=following');
+  assert.doesNotMatch(res.text, /Hat trick vs. West/);
+});
+
+test('athletes message coaches directly and teams through a shared inbox', async () => {
+  const kimTeam = (await coach('/teams/mine')).location;
+  const teamId = kimTeam.split('/').pop();
+  const kimId = Number((await coach(kimTeam)).text.match(/href="\/coaches\/(\d+)">Coach Kim/)[1]);
+
+  // Direct message to Coach Kim.
+  let res = await athlete(`/messages/new?coach=${kimId}`);
+  assert.match(res.text, /Message Coach Kim/);
+  res = await athlete('/messages', { method: 'POST', form: { coach: String(kimId), body: '   ' } });
+  assert.equal(res.status, 400);
+  res = await athlete('/messages', { method: 'POST', form: { coach: String(kimId), body: 'Hi Coach Kim, I am a 2027 PG.' } });
+  assert.equal(res.status, 302);
+  const directPath = res.location.replace('#latest', '');
+
+  // Kim sees an unread badge, reads it, and replies.
+  res = await coach('/dashboard');
+  assert.match(res.text, /aria-label="1 unread"/);
+  res = await coach(directPath);
+  assert.match(res.text, /I am a 2027 PG/);
+  res = await coach('/dashboard');
+  assert.doesNotMatch(res.text, /unread"/);
+  await coach(directPath, { method: 'POST', form: { body: 'Thanks Jordan! Send me your schedule.' } });
+
+  res = await athlete('/messages');
+  assert.match(res.text, /Send me your schedule/);
+  assert.match(res.text, /aria-label="1 unread"/);
+
+  // Starting again with the same coach reuses the conversation.
+  res = await athlete(`/messages/new?coach=${kimId}`);
+  assert.equal(res.location, directPath);
+
+  // Team inbox: Coach Lee (same team) and Coach Kim can both read and reply; Coach Fox cannot.
+  res = await athlete('/messages', { method: 'POST', form: { team: teamId, body: 'Interested in your summer camp.' } });
+  const teamPath = res.location.replace('#latest', '');
+  res = await otherCoach(teamPath);
+  assert.equal(res.status, 200);
+  assert.match(res.text, /Interested in your summer camp/);
+  await otherCoach(teamPath, { method: 'POST', form: { body: 'Camp info is on our team page!' } });
+  res = await coach(teamPath);
+  assert.match(res.text, /Camp info is on our team page!/);
+  assert.match(res.text, /Coach Lee/);
+
+  // Coach Lee can't see Kim's direct conversation; outsiders can't see either.
+  assert.equal((await otherCoach(directPath)).status, 404);
+  const fox = client();
+  await fox('/login', { method: 'POST', form: { email: 'fox@tech.edu', password: 'password123' } });
+  assert.equal((await fox(teamPath)).status, 404);
+  assert.equal((await fox(teamPath, { method: 'POST', form: { body: 'sneaky' } })).status, 404);
+
+  // Coaches reply but don't start conversations; another athlete can't read Jordan's.
+  res = await coach('/messages', { method: 'POST', form: { coach: String(kimId), body: 'x' } });
+  assert.equal(res.status, 403);
+  const riley = client();
+  await riley('/login', { method: 'POST', form: { email: 'riley@example.com', password: 'password123' } });
+  assert.equal((await riley(directPath)).status, 404);
 });
