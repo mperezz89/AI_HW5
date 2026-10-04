@@ -3,6 +3,7 @@
   <div class="profile-head">
     <div>
       <h1><%= athlete.name %></h1>
+      <% if (athlete.star_rating) { %><p class="stars" title="<%= athlete.star_rating %>-star"><%= stars(athlete.star_rating) %></p><% } %>
       <p class="muted">
         <%= [athlete.sport, athlete.position, athlete.grad_year && ('Class of ' + athlete.grad_year)].filter(Boolean).join(' · ') %>
       </p>
@@ -11,12 +12,22 @@
     <% if (isOwner) { %><a class="btn btn-secondary" href="/profile/edit">Edit profile</a><% } %>
   </div>
   <dl class="stats">
+    <% if (athlete.athlete_code) { %><div><dt>Athlete ID</dt><dd class="athlete-id"><%= athlete.athlete_code %></dd></div><% } %>
+    <% if (athlete.position_rank) { %><div><dt>Position rank</dt><dd>#<%= athlete.position_rank %></dd></div><% } %>
+    <% if (athlete.national_rank) { %><div><dt>National rank</dt><dd>#<%= athlete.national_rank %></dd></div><% } %>
     <% if (athlete.height) { %><div><dt>Height</dt><dd><%= athlete.height %></dd></div><% } %>
     <% if (athlete.weight) { %><div><dt>Weight</dt><dd><%= athlete.weight %></dd></div><% } %>
     <% if (athlete.gpa) { %><div><dt>GPA</dt><dd><%= athlete.gpa %></dd></div><% } %>
     <div><dt>Videos</dt><dd><%= videos.length %></dd></div>
   </dl>
   <% if (athlete.bio) { %><p class="pre"><%= athlete.bio %></p><% } %>
+  <% if (isOwner && missing.length) { %>
+    <div class="flash">
+      Complete your profile so coaches can find you. Still missing:
+      <%= missing.map(function (f) { return f.label; }).join(', ') %>.
+      <a href="/profile/edit">Edit profile</a>
+    </div>
+  <% } %>
   <% if (canSeeContact) { %>
     <p class="contact"><strong>Contact:</strong> <a href="mailto:<%= athlete.email %>"><%= athlete.email %></a><% if (athlete.phone) { %> · <%= athlete.phone %><% } %></p>
   <% } else if (currentUser && currentUser.role === 'coach') { %>

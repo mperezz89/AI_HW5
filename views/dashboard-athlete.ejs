@@ -1,5 +1,27 @@
 <%- include('partials/header') %>
 <h1>Hey, <%= currentUser.name.split(' ')[0] %></h1>
+<section class="card">
+  <div class="request-head">
+    <div>
+      <h2 class="flush">Your athlete profile</h2>
+      <p class="muted small">
+        <%= [profile.athlete_code && ('ID ' + profile.athlete_code), profile.sport, profile.position, profile.high_school].filter(Boolean).join(' · ') || 'Not filled in yet' %>
+        <% if (profile.star_rating) { %> <span class="stars"><%= stars(profile.star_rating) %></span><% } %>
+      </p>
+    </div>
+    <div class="actions flush">
+      <a class="btn btn-secondary btn-small" href="/athletes/<%= currentUser.id %>">View</a>
+      <a class="btn btn-small" href="/profile/edit">Edit</a>
+    </div>
+  </div>
+  <p class="small"><strong><%= totalFields - missing.length %> of <%= totalFields %></strong> profile fields complete</p>
+  <% if (missing.length) { %>
+    <p class="small muted">Still missing:</p>
+    <ul class="checklist small">
+      <% missing.forEach(function (f) { %><li><%= f.label %></li><% }) %>
+    </ul>
+  <% } %>
+</section>
 <dl class="stats card">
   <div><dt>Highlights</dt><dd><%= videos.length %></dd></div>
   <div><dt>Total views</dt><dd><%= totalViews %></dd></div>

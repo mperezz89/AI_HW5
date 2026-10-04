@@ -1,5 +1,6 @@
 const express = require('express');
 const { requireAuth, requireRole } = require('../auth');
+const { missingPreferredFields, PREFERRED_ATHLETE_FIELDS } = require('../constants');
 
 const router = express.Router();
 
@@ -23,7 +24,17 @@ router.get('/dashboard', requireAuth, (req, res) => {
       )
       .all(req.user.id);
     const totalViews = videos.reduce((sum, v) => sum + v.views, 0);
-    return res.render('dashboard-athlete', { title: 'Dashboard', videos, requests, totalViews });
+    const profile = db.prepare('SELECT * FROM athlete_profiles WHERE user_id = ?').get(req.user.id) || {};
+    const missing = missingPreferredFields(profile);
+    return res.render('dashboard-athlete', {
+      title: 'Dashboard',
+      videos,
+      requests,
+      totalViews,
+      profile,
+      missing,
+      totalFields: PREFERRED_ATHLETE_FIELDS.length,
+    });
   }
 
   const requests = db

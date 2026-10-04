@@ -3,7 +3,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 const session = require('express-session');
 const { openDatabase } = require('./db');
-const { SPORTS, US_STATES } = require('./constants');
+const { SPORTS, US_STATES, stars } = require('./constants');
 
 function createApp({
   dbPath = path.join(__dirname, '..', 'data', 'app.db'),
@@ -21,6 +21,7 @@ function createApp({
   app.locals.maxUploadBytes = maxUploadBytes;
   app.locals.SPORTS = SPORTS;
   app.locals.US_STATES = US_STATES;
+  app.locals.stars = stars;
 
   app.use(express.urlencoded({ extended: false }));
   app.use(express.static(path.join(__dirname, '..', 'public')));

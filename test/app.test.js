@@ -179,3 +179,83 @@ test('login rejects bad passwords and does not open-redirect', async () => {
   assert.equal(res.status, 302);
   assert.equal(res.location, '/dashboard');
 });
+
+test('athlete fills in the preferred profile attributes', async () => {
+  let res = await athlete('/dashboard');
+  assert.match(res.text, /profile fields complete/);
+  assert.match(res.text, /<li>Athlete ID<\/li>/);
+
+  res = await athlete('/profile/edit', {
+    method: 'POST',
+    form: {
+      athlete_code: 'NCAA-2027-0042',
+      sport: 'Basketball',
+      high_school: 'Central HS',
+      position: 'Point Guard',
+      position_rank: '#12',
+      star_rating: '4',
+      national_rank: '150',
+      city: 'South Bend',
+      state: 'IN',
+      bio: 'Two-year varsity starter.',
+    },
+  });
+  assert.equal(res.status, 302);
+
+  res = await coach(`/athletes/${athleteId}`);
+  assert.match(res.text, /NCAA-2027-0042/);
+  assert.match(res.text, /★★★★☆/);
+  assert.match(res.text, /#12/);
+  assert.match(res.text, /#150/);
+  assert.match(res.text, /South Bend, IN/);
+
+  res = await athlete('/dashboard');
+  assert.match(res.text, /<strong>9 of 9<\/strong> profile fields complete/);
+});
+
+test('profile rejects invalid rankings and duplicate Athlete IDs', async () => {
+  const cases = [
+    [{ star_rating: '6' }, /Star ranking must be between 1 and 5/],
+    [{ national_rank: 'top 10' }, /National ranking must be a whole number/],
+    [{ position_rank: '0' }, /Position ranking must be a whole number/],
+  ];
+  for (const [form, message] of cases) {
+    const res = await athlete('/profile/edit', { method: 'POST', form });
+    assert.equal(res.status, 400);
+    assert.match(res.text, message);
+  }
+
+  const other = client();
+  await signUp(other, { name: 'Sam Ortiz', email: 'sam@example.com', role: 'athlete' });
+  const res = await other('/profile/edit', { method: 'POST', form: { athlete_code: 'ncaa-2027-0042' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /already in use/);
+  await other('/profile/edit', { method: 'POST', form: { sport: 'Basketball', star_rating: '5', national_rank: '3' } });
+});
+
+test('coaches can search by Athlete ID, filter by stars, and sort by national ranking', async () => {
+  let res = await coach('/athletes?q=NCAA-2027');
+  assert.match(res.text, /Jordan Rivers/);
+  assert.doesNotMatch(res.text, /Sam Ortiz/);
+
+  res = await coach('/athletes?min_stars=5');
+  assert.match(res.text, /Sam Ortiz/);
+  assert.doesNotMatch(res.text, /Jordan Rivers/);
+
+  res = await coach('/athletes?sport=Basketball&sort=national_rank');
+  assert.ok(res.text.indexOf('Sam Ortiz') < res.text.indexOf('Jordan Rivers'), 'rank #3 should list before #150');
+});
+
+test('existing databases gain the new profile columns', () => {
+  const { DatabaseSync } = require('node:sqlite');
+  const { openDatabase } = require('../src/db');
+  const file = path.join(tmpDir, 'old.db');
+  const old = new DatabaseSync(file);
+  old.exec('CREATE TABLE athlete_profiles (user_id INTEGER PRIMARY KEY, sport TEXT, position TEXT)');
+  old.close();
+
+  const db = openDatabase(file);
+  const columns = db.prepare('PRAGMA table_info(athlete_profiles)').all().map((c) => c.name);
+  for (const c of ['athlete_code', 'position_rank', 'star_rating', 'national_rank']) assert.ok(columns.includes(c), c);
+  db.close();
+});

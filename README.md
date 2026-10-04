@@ -13,7 +13,7 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 
 **Coaches**
 - Sign up as a coach and list your school, title, sport, and division.
-- Search athletes by name, school, or city, and filter by sport, position, grad year, and state.
+- Search athletes by name, school, city, or Athlete ID. Filter by sport, position, grad year, state, and minimum star ranking, and sort by national ranking.
 - Watch highlights. Video views are counted, and an athlete's own views are not.
 - Send a visit request with a message, a proposed date, and optionally the video that caught your eye. You can have only one pending request per athlete at a time.
 - Track request status (pending, accepted, or declined) on your dashboard.
@@ -66,4 +66,5 @@ test/app.test.js    End-to-end tests
 - Storage: move videos to object storage (S3, GCS, or R2) behind a CDN, and use direct-to-bucket uploads for large files.
 - Sessions: replace the in-memory session store with a persistent one, such as Redis or SQLite.
 - Security: add CSRF tokens, rate limiting on login and upload, email verification, and verification that coaches really work for the programs they list.
+- Verification: rankings and Athlete IDs are self-reported. Consider verifying them against an official source or labeling them as self-reported.
 - Product: messaging, saved athletes for coaches, email notifications for new visit requests, and reporting and moderation for uploaded content.

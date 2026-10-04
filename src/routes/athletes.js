@@ -1,5 +1,6 @@
 const express = require('express');
 const { requireAuth } = require('../auth');
+const { missingPreferredFields } = require('../constants');
 
 const router = express.Router();
 
@@ -11,14 +12,16 @@ router.get('/athletes', requireAuth, (req, res) => {
     position: (req.query.position || '').trim(),
     grad_year: req.query.grad_year || '',
     state: req.query.state || '',
+    min_stars: req.query.min_stars || '',
+    sort: req.query.sort === 'national_rank' ? 'national_rank' : 'recent',
   };
 
   const where = ["u.role = 'athlete'"];
   const params = [];
   if (filters.q) {
-    where.push('(u.name LIKE ? OR p.high_school LIKE ? OR p.city LIKE ?)');
+    where.push('(u.name LIKE ? OR p.high_school LIKE ? OR p.city LIKE ? OR p.athlete_code LIKE ?)');
     const like = `%${filters.q}%`;
-    params.push(like, like, like);
+    params.push(like, like, like, like);
   }
   if (filters.sport) {
     where.push('p.sport = ?');
@@ -36,10 +39,20 @@ router.get('/athletes', requireAuth, (req, res) => {
     where.push('p.state = ?');
     params.push(filters.state);
   }
+  if (filters.min_stars) {
+    where.push('p.star_rating >= ?');
+    params.push(Number(filters.min_stars));
+  }
+
+  const orderBy =
+    filters.sort === 'national_rank'
+      ? 'p.national_rank IS NULL, p.national_rank, u.name'
+      : 'video_count > 0 DESC, MAX(v.created_at) DESC, u.created_at DESC';
 
   const athletes = db
     .prepare(
       `SELECT u.id, u.name, p.sport, p.position, p.grad_year, p.high_school, p.city, p.state,
+              p.athlete_code, p.position_rank, p.star_rating, p.national_rank,
               COUNT(v.id) AS video_count, COALESCE(SUM(v.views), 0) AS total_views,
               (SELECT filename FROM videos WHERE athlete_id = u.id ORDER BY created_at DESC, id DESC LIMIT 1) AS latest_filename,
               (SELECT mime_type FROM videos WHERE athlete_id = u.id ORDER BY created_at DESC, id DESC LIMIT 1) AS latest_mime
@@ -48,7 +61,7 @@ router.get('/athletes', requireAuth, (req, res) => {
        LEFT JOIN videos v ON v.athlete_id = u.id
        WHERE ${where.join(' AND ')}
        GROUP BY u.id
-       ORDER BY video_count > 0 DESC, MAX(v.created_at) DESC, u.created_at DESC
+       ORDER BY ${orderBy}
        LIMIT 100`
     )
     .all(...params);
@@ -91,6 +104,7 @@ router.get('/athletes/:id', (req, res, next) => {
     visitRequests,
     hasPending,
     preselectVideo: req.query.video || '',
+    missing: isOwner ? missingPreferredFields(athlete) : [],
   });
 });
 

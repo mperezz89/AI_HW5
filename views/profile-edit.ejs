@@ -5,6 +5,9 @@
   <form method="post" action="/profile/edit" class="form">
     <label>Full name <input name="name" value="<%= currentUser.name %>"></label>
     <% if (currentUser.role === 'athlete') { %>
+      <h2 class="form-section">Athlete profile</h2>
+      <p class="muted small">Coaches search and filter on these. Fill them in as accurately as you can.</p>
+      <label>Athlete ID <input name="athlete_code" value="<%= profile.athlete_code || '' %>" placeholder="e.g. NCAA Eligibility Center ID"></label>
       <div class="row">
         <label>Sport
           <select name="sport">
@@ -13,9 +16,18 @@
           </select>
         </label>
         <label>Position <input name="position" value="<%= profile.position || '' %>" placeholder="e.g. Point Guard"></label>
-        <label>Grad year <input name="grad_year" inputmode="numeric" value="<%= profile.grad_year || '' %>" placeholder="2028"></label>
       </div>
-      <label>High school / club <input name="high_school" value="<%= profile.high_school || '' %>"></label>
+      <label>School <input name="high_school" value="<%= profile.high_school || '' %>" placeholder="High school or club"></label>
+      <div class="row">
+        <label>Position ranking <input name="position_rank" inputmode="numeric" value="<%= profile.position_rank || '' %>" placeholder="e.g. 12"></label>
+        <label>Star ranking
+          <select name="star_rating">
+            <option value="">—</option>
+            <% [5, 4, 3, 2, 1].forEach(function (n) { %><option value="<%= n %>" <%= String(profile.star_rating) === String(n) ? 'selected' : '' %>><%= n %> star<%= n === 1 ? '' : 's' %></option><% }) %>
+          </select>
+        </label>
+        <label>National ranking <input name="national_rank" inputmode="numeric" value="<%= profile.national_rank || '' %>" placeholder="e.g. 150"></label>
+      </div>
       <div class="row">
         <label>City <input name="city" value="<%= profile.city || '' %>"></label>
         <label>State
@@ -25,12 +37,15 @@
           </select>
         </label>
       </div>
+      <label>Profile bio <textarea name="bio" rows="4" placeholder="Stats, awards, what you bring to a program…"><%= profile.bio || '' %></textarea></label>
+
+      <h2 class="form-section">Additional details <span class="muted small">(optional)</span></h2>
       <div class="row">
+        <label>Grad year <input name="grad_year" inputmode="numeric" value="<%= profile.grad_year || '' %>" placeholder="2028"></label>
         <label>Height <input name="height" value="<%= profile.height || '' %>" placeholder="6'2&quot;"></label>
         <label>Weight <input name="weight" value="<%= profile.weight || '' %>" placeholder="185 lb"></label>
         <label>GPA <input name="gpa" value="<%= profile.gpa || '' %>" placeholder="3.6"></label>
       </div>
-      <label>Bio <textarea name="bio" rows="4" placeholder="Stats, awards, what you bring to a program…"><%= profile.bio || '' %></textarea></label>
       <label>Phone <span class="muted">(only shared with coaches whose visit request you accept)</span>
         <input name="phone" value="<%= profile.phone || '' %>"></label>
     <% } else { %>

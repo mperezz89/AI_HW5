@@ -14,8 +14,12 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS athlete_profiles (
   user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  athlete_code TEXT,
   sport TEXT,
   position TEXT,
+  position_rank INTEGER,
+  star_rating INTEGER CHECK (star_rating BETWEEN 1 AND 5),
+  national_rank INTEGER,
   grad_year INTEGER,
   high_school TEXT,
   city TEXT,
@@ -67,6 +71,28 @@ CREATE INDEX IF NOT EXISTS idx_visits_athlete ON visit_requests(athlete_id);
 CREATE INDEX IF NOT EXISTS idx_visits_coach ON visit_requests(coach_id);
 `;
 
+// Columns added after the first release; ALTER TABLE brings older databases up to date.
+const ADDED_COLUMNS = {
+  athlete_profiles: {
+    athlete_code: 'TEXT',
+    position_rank: 'INTEGER',
+    star_rating: 'INTEGER CHECK (star_rating BETWEEN 1 AND 5)',
+    national_rank: 'INTEGER',
+  },
+};
+
+function migrate(db) {
+  for (const [table, columns] of Object.entries(ADDED_COLUMNS)) {
+    const existing = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name));
+    for (const [name, type] of Object.entries(columns)) {
+      if (!existing.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${type}`);
+    }
+  }
+  db.exec(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_athlete_code ON athlete_profiles(athlete_code COLLATE NOCASE) WHERE athlete_code IS NOT NULL'
+  );
+}
+
 function openDatabase(dbPath) {
   if (dbPath !== ':memory:') {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -74,6 +100,7 @@ function openDatabase(dbPath) {
   const db = new DatabaseSync(dbPath);
   db.exec('PRAGMA foreign_keys = ON;');
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 

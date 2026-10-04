@@ -1,7 +1,7 @@
 <%- include('partials/header') %>
 <h1>Find athletes</h1>
 <form method="get" action="/athletes" class="filters card">
-  <input name="q" value="<%= filters.q %>" placeholder="Name, school, or city">
+  <input name="q" value="<%= filters.q %>" placeholder="Name, school, city, or Athlete ID">
   <select name="sport">
     <option value="">Any sport</option>
     <% SPORTS.forEach(function (s) { %><option <%= filters.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
@@ -11,6 +11,14 @@
   <select name="state">
     <option value="">Any state</option>
     <% US_STATES.forEach(function (s) { %><option <%= filters.state === s ? 'selected' : '' %>><%= s %></option><% }) %>
+  </select>
+  <select name="min_stars">
+    <option value="">Any star ranking</option>
+    <% [5, 4, 3, 2, 1].forEach(function (n) { %><option value="<%= n %>" <%= filters.min_stars === String(n) ? 'selected' : '' %>><%= n %>-star<%= n < 5 ? ' & up' : '' %></option><% }) %>
+  </select>
+  <select name="sort">
+    <option value="recent">Sort: recent highlights</option>
+    <option value="national_rank" <%= filters.sort === 'national_rank' ? 'selected' : '' %>>Sort: national ranking</option>
   </select>
   <button class="btn">Search</button>
 </form>
@@ -25,13 +33,17 @@
       <% } else { %>
         <div class="placeholder">No video yet</div>
       <% } %>
-      <h3><a href="/athletes/<%= a.id %>"><%= a.name %></a></h3>
+      <h3><a href="/athletes/<%= a.id %>"><%= a.name %></a>
+        <% if (a.star_rating) { %><span class="stars small" title="<%= a.star_rating %>-star"><%= stars(a.star_rating) %></span><% } %></h3>
       <p class="muted">
         <%= [a.sport, a.position, a.grad_year && ('Class of ' + a.grad_year)].filter(Boolean).join(' · ') || 'Profile incomplete' %>
       </p>
       <p class="muted small">
         <%= [a.high_school, [a.city, a.state].filter(Boolean).join(', ')].filter(Boolean).join(' — ') %>
       </p>
+      <% if (a.position_rank || a.national_rank) { %>
+        <p class="small"><%= [a.position_rank && ('#' + a.position_rank + ' at position'), a.national_rank && ('#' + a.national_rank + ' nationally')].filter(Boolean).join(' · ') %></p>
+      <% } %>
       <p class="small"><%= a.video_count %> video<%= a.video_count === 1 ? '' : 's' %> · <%= a.total_views %> views</p>
     </article>
   <% }) %>
