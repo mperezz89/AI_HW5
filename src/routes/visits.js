@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireAuth, requireRole } = require('../auth');
 const { missingPreferredFields, PREFERRED_ATHLETE_FIELDS } = require('../constants');
+const { nowLocal, upcomingSlots } = require('../calendar');
 
 const router = express.Router();
 
@@ -14,15 +15,17 @@ router.get('/dashboard', requireAuth, (req, res) => {
     const requests = db
       .prepare(
         `SELECT r.*, u.name AS coach_name, u.email AS coach_email, c.school, c.title AS coach_title, c.division,
-                v.title AS video_title
+                v.title AS video_title, s.starts_at, s.duration_minutes, s.location,
+                (SELECT COUNT(*) FROM visit_slots o WHERE o.coach_id = r.coach_id AND o.starts_at > ?) AS open_times
          FROM visit_requests r
          JOIN users u ON u.id = r.coach_id
          LEFT JOIN coach_profiles c ON c.user_id = r.coach_id
          LEFT JOIN videos v ON v.id = r.video_id
+         LEFT JOIN visit_slots s ON s.id = r.slot_id
          WHERE r.athlete_id = ?
-         ORDER BY r.status = 'pending' DESC, r.created_at DESC, r.id DESC`
+         ORDER BY r.status = 'pending' DESC, r.status = 'accepted' DESC, s.starts_at, r.created_at DESC, r.id DESC`
       )
-      .all(req.user.id);
+      .all(nowLocal(), req.user.id);
     const totalViews = videos.reduce((sum, v) => sum + v.views, 0);
     const profile = db.prepare('SELECT * FROM athlete_profiles WHERE user_id = ?').get(req.user.id) || {};
     const missing = missingPreferredFields(profile);
@@ -39,17 +42,20 @@ router.get('/dashboard', requireAuth, (req, res) => {
 
   const requests = db
     .prepare(
-      `SELECT r.*, u.name AS athlete_name, v.title AS video_title, p.sport, p.position, p.grad_year
+      `SELECT r.*, u.name AS athlete_name, v.title AS video_title, p.sport, p.position, p.grad_year,
+              s.starts_at, s.duration_minutes
        FROM visit_requests r
        JOIN users u ON u.id = r.athlete_id
        LEFT JOIN athlete_profiles p ON p.user_id = r.athlete_id
        LEFT JOIN videos v ON v.id = r.video_id
+       LEFT JOIN visit_slots s ON s.id = r.slot_id
        WHERE r.coach_id = ?
        ORDER BY r.created_at DESC, r.id DESC`
     )
     .all(req.user.id);
   const profile = db.prepare('SELECT * FROM coach_profiles WHERE user_id = ?').get(req.user.id) || {};
-  res.render('dashboard-coach', { title: 'Dashboard', requests, profile });
+  const openTimes = upcomingSlots(db, req.user.id, { openOnly: true }).length;
+  res.render('dashboard-coach', { title: 'Dashboard', requests, profile, openTimes });
 });
 
 router.post('/athletes/:id/visit-requests', requireRole('coach'), (req, res, next) => {
@@ -58,7 +64,6 @@ router.post('/athletes/:id/visit-requests', requireRole('coach'), (req, res, nex
   if (!athlete) return next();
 
   const message = (req.body.message || '').trim();
-  const proposedDate = (req.body.proposed_date || '').trim() || null;
   let videoId = req.body.video_id ? Number(req.body.video_id) : null;
   if (videoId && !db.prepare('SELECT 1 FROM videos WHERE id = ? AND athlete_id = ?').get(videoId, athlete.id)) {
     videoId = null;
@@ -66,25 +71,30 @@ router.post('/athletes/:id/visit-requests', requireRole('coach'), (req, res, nex
 
   const back = `/athletes/${athlete.id}`;
   if (!message) {
-    req.session.flash = 'Please include a message with your visit request.';
+    req.session.flash = 'Please include a message with your visit invitation.';
     return res.redirect(back);
   }
-  const pending = db
-    .prepare("SELECT 1 FROM visit_requests WHERE coach_id = ? AND athlete_id = ? AND status = 'pending'")
-    .get(req.user.id, athlete.id);
-  if (pending) {
-    req.session.flash = 'You already have a pending visit request with this athlete.';
+  const open = db
+    .prepare(
+      `SELECT 1 FROM visit_requests r LEFT JOIN visit_slots s ON s.id = r.slot_id
+       WHERE r.coach_id = ? AND r.athlete_id = ?
+         AND (r.status = 'pending' OR (r.status = 'accepted' AND s.starts_at > ?))`
+    )
+    .get(req.user.id, athlete.id, nowLocal());
+  if (open) {
+    req.session.flash = 'You already have an open invitation or upcoming visit with this athlete.';
     return res.redirect(back);
   }
 
   db.prepare(
-    'INSERT INTO visit_requests (coach_id, athlete_id, video_id, message, proposed_date) VALUES (?, ?, ?, ?, ?)'
-  ).run(req.user.id, athlete.id, videoId, message, proposedDate);
+    'INSERT INTO visit_requests (coach_id, athlete_id, video_id, message) VALUES (?, ?, ?, ?)'
+  ).run(req.user.id, athlete.id, videoId, message);
 
-  req.session.flash = 'Visit request sent!';
+  req.session.flash = 'Invitation sent! Your visit calendar is now open to this athlete.';
   res.redirect(back);
 });
 
+// Athletes accept an invitation by booking a time (see routes/calendar.js); this handles declining.
 router.post('/visit-requests/:id/respond', requireRole('athlete'), (req, res, next) => {
   const db = req.app.locals.db;
   const request = db
@@ -92,17 +102,16 @@ router.post('/visit-requests/:id/respond', requireRole('athlete'), (req, res, ne
     .get(req.params.id, req.user.id);
   if (!request) return next();
 
-  const status = req.body.decision === 'accept' ? 'accepted' : req.body.decision === 'decline' ? 'declined' : null;
-  if (!status || request.status !== 'pending') {
-    req.session.flash = 'That request can no longer be updated.';
+  if (req.body.decision !== 'decline' || request.status !== 'pending') {
+    req.session.flash = 'That invitation can no longer be updated.';
     return res.redirect('/dashboard');
   }
 
   db.prepare(
-    "UPDATE visit_requests SET status = ?, response_message = ?, responded_at = datetime('now') WHERE id = ?"
-  ).run(status, (req.body.response_message || '').trim() || null, request.id);
+    "UPDATE visit_requests SET status = 'declined', response_message = ?, responded_at = datetime('now') WHERE id = ?"
+  ).run((req.body.response_message || '').trim() || null, request.id);
 
-  req.session.flash = status === 'accepted' ? 'Visit accepted — the coach can now see your contact info.' : 'Visit request declined.';
+  req.session.flash = 'Visit invitation declined.';
   res.redirect('/dashboard');
 });
 

@@ -2,6 +2,7 @@ const express = require('express');
 const { requireAuth } = require('../auth');
 const { missingPreferredFields } = require('../constants');
 const { followStats } = require('./people');
+const { nowLocal, upcomingSlots } = require('../calendar');
 
 const router = express.Router();
 
@@ -88,13 +89,21 @@ router.get('/athletes/:id', (req, res, next) => {
   const isOwner = req.user && req.user.id === athlete.id;
   let visitRequests = [];
   let canSeeContact = isOwner;
+  let coachOpenTimes = 0;
   if (req.user && req.user.role === 'coach') {
     visitRequests = db
-      .prepare('SELECT * FROM visit_requests WHERE coach_id = ? AND athlete_id = ? ORDER BY created_at DESC, id DESC')
+      .prepare(
+        `SELECT r.*, s.starts_at, s.duration_minutes FROM visit_requests r LEFT JOIN visit_slots s ON s.id = r.slot_id
+         WHERE r.coach_id = ? AND r.athlete_id = ? ORDER BY r.created_at DESC, r.id DESC`
+      )
       .all(req.user.id, athlete.id);
     canSeeContact = visitRequests.some((r) => r.status === 'accepted');
+    coachOpenTimes = upcomingSlots(db, req.user.id, { openOnly: true }).length;
   }
-  const hasPending = visitRequests.some((r) => r.status === 'pending');
+  const now = nowLocal();
+  const hasOpenInvite = visitRequests.some(
+    (r) => r.status === 'pending' || (r.status === 'accepted' && r.starts_at && r.starts_at > now)
+  );
 
   res.render('athlete-show', {
     title: athlete.name,
@@ -103,7 +112,8 @@ router.get('/athletes/:id', (req, res, next) => {
     isOwner,
     canSeeContact,
     visitRequests,
-    hasPending,
+    hasOpenInvite,
+    coachOpenTimes,
     preselectVideo: req.query.video || '',
     missing: isOwner ? missingPreferredFields(athlete) : [],
     social: followStats(db, athlete.id, req.user && req.user.id),

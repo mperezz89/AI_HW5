@@ -107,6 +107,18 @@ CREATE TABLE IF NOT EXISTS team_follows (
 );
 CREATE INDEX IF NOT EXISTS idx_follows_athlete ON team_follows(athlete_id);
 
+-- Open times on a coach's visit calendar. Times are campus-local, stored as "YYYY-MM-DDTHH:MM".
+CREATE TABLE IF NOT EXISTS visit_slots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  coach_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  starts_at TEXT NOT NULL,
+  duration_minutes INTEGER NOT NULL,
+  capacity INTEGER NOT NULL DEFAULT 1,
+  location TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_slots_coach ON visit_slots(coach_id, starts_at);
+
 -- People following people (athletes and coaches).
 CREATE TABLE IF NOT EXISTS user_follows (
   follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -154,6 +166,9 @@ const ADDED_COLUMNS = {
     position_rank: 'INTEGER',
     star_rating: 'INTEGER CHECK (star_rating BETWEEN 1 AND 5)',
     national_rank: 'INTEGER',
+  },
+  visit_requests: {
+    slot_id: 'INTEGER REFERENCES visit_slots(id) ON DELETE SET NULL',
   },
   coach_profiles: {
     team_id: 'INTEGER REFERENCES teams(id) ON DELETE SET NULL',

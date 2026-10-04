@@ -1,0 +1,43 @@
+<%- include('partials/header') %>
+<div class="thread">
+  <p><a href="/dashboard">← Dashboard</a></p>
+  <section class="card">
+    <h1>Schedule your visit</h1>
+    <p><strong><%= request.coach_name %></strong><%= request.coach_title ? ', ' + request.coach_title : '' %><%= request.school ? ' · ' + request.school : '' %> invited you to visit campus.</p>
+    <p class="pre muted"><%= request.message %></p>
+    <% if (request.starts_at) { %>
+      <p class="notice">Currently scheduled for <strong><%= formatSlot(request.starts_at, request.duration_minutes) %></strong>. Pick a new time below to reschedule.</p>
+    <% } %>
+  </section>
+
+  <% if (!days.length) { %>
+    <div class="card empty">
+      <p>The coach has no open times right now.</p>
+      <p><a class="btn btn-secondary" href="/messages/new?coach=<%= request.coach_id %>">Message <%= request.coach_name %></a></p>
+    </div>
+  <% } else { %>
+    <form method="post" action="/visit-requests/<%= request.id %>/schedule" class="form">
+      <p class="muted small">Times are local time at campus.</p>
+      <% days.forEach(function (d) { %>
+        <fieldset class="day-group">
+          <legend class="day-title"><%= d.day %></legend>
+          <div class="slot-choices">
+            <% d.slots.forEach(function (s) { var left = s.capacity - s.booked; %>
+              <label class="slot-choice">
+                <input type="radio" name="slot_id" value="<%= s.id %>" required>
+                <span>
+                  <strong><%= formatTimeRange(s.starts_at, s.duration_minutes) %></strong>
+                  <% if (s.location) { %><span class="small muted"><%= s.location %></span><% } %>
+                  <% if (s.capacity > 1) { %><span class="small muted"><%= left %> spot<%= left === 1 ? '' : 's' %> left</span><% } %>
+                </span>
+              </label>
+            <% }) %>
+          </div>
+        </fieldset>
+      <% }) %>
+      <label>Note to the coach (optional) <input name="response_message" maxlength="1000" placeholder="Looking forward to it! My parents will join me."></label>
+      <button class="btn"><%= request.starts_at ? 'Reschedule visit' : 'Schedule visit' %></button>
+    </form>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

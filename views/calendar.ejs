@@ -1,0 +1,59 @@
+<%- include('partials/header') %>
+<div class="calendar-layout">
+  <section>
+    <h1>Visit calendar</h1>
+    <p class="muted">Add the times you can host visits. Your calendar is only visible to athletes you've invited, and they can book any open time.</p>
+    <% if (!days.length) { %><p class="card muted">No upcoming visit times. Add one to get started.</p><% } %>
+    <% days.forEach(function (d) { %>
+      <h2 class="day-title"><%= d.day %></h2>
+      <% d.slots.forEach(function (s) { var full = s.booked >= s.capacity; %>
+        <div class="card slot-row">
+          <div class="grow">
+            <strong><%= formatTimeRange(s.starts_at, s.duration_minutes) %></strong>
+            <% if (s.location) { %><div class="small muted"><%= s.location %></div><% } %>
+            <div class="small">
+              <span class="status status-<%= full ? 'accepted' : 'pending' %>"><%= full ? 'Full' : 'Open' %></span>
+              <%= s.booked %> of <%= s.capacity %> booked<% if (s.athletes.length) { %>:
+                <% s.athletes.forEach(function (a, i) { %><a href="/athletes/<%= a.athlete_id %>"><%= a.athlete_name %></a><%= i < s.athletes.length - 1 ? ', ' : '' %><% }) %>
+              <% } %>
+            </div>
+          </div>
+          <% if (!s.booked) { %>
+            <form method="post" action="/calendar/slots/<%= s.id %>/delete" class="inline">
+              <button class="btn btn-secondary btn-small">Remove</button>
+            </form>
+          <% } %>
+        </div>
+      <% }) %>
+    <% }) %>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2 class="side-title">Add an open time</h2>
+      <% if (error) { %><p class="error"><%= error %></p><% } %>
+      <form method="post" action="/calendar/slots" class="form">
+        <label>Date and start time <input type="datetime-local" name="starts_at" required min="<%= minStart %>" value="<%= form.starts_at || '' %>"></label>
+        <div class="row">
+          <label>Length
+            <select name="duration_minutes">
+              <% [[30, '30 min'], [60, '1 hour'], [90, '1.5 hours'], [120, '2 hours'], [180, '3 hours'], [240, '4 hours'], [480, 'Full day']].forEach(function (o) { %>
+                <option value="<%= o[0] %>" <%= String(form.duration_minutes || 120) === String(o[0]) ? 'selected' : '' %>><%= o[1] %></option>
+              <% }) %>
+            </select>
+          </label>
+          <label>Athletes <input type="number" name="capacity" min="1" max="50" value="<%= form.capacity || 1 %>"></label>
+        </div>
+        <label>Location / notes <input name="location" maxlength="300" value="<%= form.location || '' %>" placeholder="Meet at the athletics center front desk"></label>
+        <p class="muted small">Times are local time at your campus.</p>
+        <button class="btn">Add time</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2 class="side-title">Invited, not yet scheduled</h2>
+      <% if (!invited.length) { %><p class="muted small">Nobody is waiting to pick a time. Invite athletes from their profile pages.</p><% } %>
+      <% invited.forEach(function (a) { %><div class="small"><a href="/athletes/<%= a.id %>"><%= a.name %></a></div><% }) %>
+    </div>
+  </aside>
+</div>
+<%- include('partials/footer') %>

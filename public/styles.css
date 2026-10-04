@@ -162,3 +162,19 @@ video { width: 100%; aspect-ratio: 16 / 9; background: #000; display: block; }
 .bubble.mine { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .bubble-meta { font-size: 0.75rem; opacity: 0.75; margin-top: 2px; }
 .notice { font-size: 0.85rem; color: var(--muted); border-left: 3px solid var(--border); padding-left: 10px; }
+
+/* Visit calendar */
+.calendar-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; align-items: start; }
+@media (max-width: 900px) { .calendar-layout { grid-template-columns: minmax(0, 1fr); } .calendar-layout aside { order: -1; } }
+.day-title { font-size: 1rem; margin: 18px 0 8px; padding: 0; }
+.slot-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 8px; }
+.slot-row .status { margin-right: 6px; }
+.day-group { border: 0; padding: 0; margin: 0; }
+.slot-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.form .slot-choice { flex-direction: row; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; font-weight: 400; }
+.slot-choice input { width: auto; margin-top: 4px; }
+.slot-choice span { display: flex; flex-direction: column; }
+.slot-choice:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.visit-when { background: color-mix(in srgb, var(--ok) 10%, var(--surface)); border: 1px solid var(--ok); border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+details.decline { margin-top: 10px; }
+details.decline summary { cursor: pointer; }

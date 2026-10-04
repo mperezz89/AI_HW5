@@ -32,7 +32,7 @@
   <% if (canSeeContact) { %>
     <p class="contact"><strong>Contact:</strong> <a href="mailto:<%= athlete.email %>"><%= athlete.email %></a><% if (athlete.phone) { %> · <%= athlete.phone %><% } %></p>
   <% } else if (currentUser && currentUser.role === 'coach') { %>
-    <p class="muted small">Contact info is shared once the athlete accepts your visit request.</p>
+    <p class="muted small">Contact info is shared once the athlete schedules a visit with you.</p>
   <% } %>
 </section>
 
@@ -53,26 +53,33 @@
 
 <% if (currentUser && currentUser.role === 'coach') { %>
 <section class="card" id="request">
-  <h2>Request a visit</h2>
+  <h2>Invite to visit</h2>
   <% visitRequests.forEach(function (r) { %>
-    <p class="small">Request sent <%= r.created_at.slice(0, 10) %> — <span class="status status-<%= r.status %>"><%= r.status %></span>
-      <% if (r.response_message) { %>: “<%= r.response_message %>”<% } %></p>
+    <p class="small">Invitation sent <%= r.created_at.slice(0, 10) %>:
+      <% if (r.status === 'accepted' && r.starts_at) { %>
+        <span class="status status-accepted">Scheduled</span> <%= formatSlot(r.starts_at, r.duration_minutes) %>
+      <% } else { %>
+        <span class="status status-<%= r.status %>"><%= r.status === 'pending' ? 'Waiting for a time' : r.status %></span>
+      <% } %>
+      <% if (r.response_message) { %>“<%= r.response_message %>”<% } %></p>
   <% }) %>
-  <% if (hasPending) { %>
-    <p class="muted">Your request is pending. You'll see the athlete's response on your dashboard.</p>
+  <% if (hasOpenInvite) { %>
+    <p class="muted">This athlete can book any open time on <a href="/calendar">your visit calendar</a>. Bookings show up there and on your dashboard.</p>
   <% } else { %>
+    <p class="muted small">Sending an invitation opens <a href="/calendar">your visit calendar</a> to this athlete so they can pick a time to visit.
+      You have <strong><%= coachOpenTimes %></strong> open time<%= coachOpenTimes === 1 ? '' : 's' %>.</p>
+    <% if (!coachOpenTimes) { %>
+      <p class="notice">You have no open times yet. <a href="/calendar">Add visit times</a> so this athlete has something to choose from.</p>
+    <% } %>
     <form method="post" action="/athletes/<%= athlete.id %>/visit-requests" class="form">
       <label>Message <textarea name="message" rows="4" required placeholder="Introduce yourself and your program, and why you'd like them to visit."></textarea></label>
-      <div class="row">
-        <label>Proposed visit date <input type="date" name="proposed_date"></label>
-        <label>About which video?
-          <select name="video_id">
-            <option value="">General</option>
-            <% videos.forEach(function (v) { %><option value="<%= v.id %>" <%= String(v.id) === preselectVideo ? 'selected' : '' %>><%= v.title %></option><% }) %>
-          </select>
-        </label>
-      </div>
-      <button class="btn">Send visit request</button>
+      <label>About which video?
+        <select name="video_id">
+          <option value="">General</option>
+          <% videos.forEach(function (v) { %><option value="<%= v.id %>" <%= String(v.id) === preselectVideo ? 'selected' : '' %>><%= v.title %></option><% }) %>
+        </select>
+      </label>
+      <button class="btn">Send invitation</button>
     </form>
   <% } %>
 </section>

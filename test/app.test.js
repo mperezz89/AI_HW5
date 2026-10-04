@@ -116,47 +116,115 @@ test('views count only for non-owners', async () => {
   assert.match(res.text, /<dt>Total views<\/dt><dd>1<\/dd>/);
 });
 
-test('visit request flow hides contact info until accepted', async () => {
+test('coaches open a visit calendar to invited athletes, who book a time', async () => {
   let res = await coach(`/athletes/${athleteId}`);
   assert.doesNotMatch(res.text, /555-0100/);
   assert.match(res.text, /Contact info is shared once/);
+  assert.match(res.text, /You have no open times yet/);
 
+  // Coach Kim adds open times; past or malformed times are rejected.
+  res = await coach('/calendar/slots', { method: 'POST', form: { starts_at: '2020-01-01T10:00' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /must be in the future/);
+  res = await coach('/calendar/slots', { method: 'POST', form: { starts_at: 'soon' } });
+  assert.equal(res.status, 400);
+  await coach('/calendar/slots', {
+    method: 'POST',
+    form: { starts_at: '2099-11-14T10:00', duration_minutes: '120', capacity: '1', location: 'Athletics center front desk' },
+  });
+  await coach('/calendar/slots', { method: 'POST', form: { starts_at: '2099-11-21T09:00', duration_minutes: '240', capacity: '2' } });
+  res = await coach('/calendar');
+  assert.match(res.text, /Saturday, November 14, 2099/);
+  assert.match(res.text, /10:00 AM – 12:00 PM/);
+
+  // Inviting opens the calendar; a second open invitation is blocked.
   res = await coach(`/athletes/${athleteId}/visit-requests`, {
     method: 'POST',
-    form: { message: 'Loved your film — come visit campus!', proposed_date: '2026-11-15', video_id: String(videoId) },
+    form: { message: 'Loved your film — come visit campus!', video_id: String(videoId) },
   });
   assert.equal(res.status, 302);
-
-  // Duplicate pending requests are blocked.
   await coach(`/athletes/${athleteId}/visit-requests`, { method: 'POST', form: { message: 'again' } });
   res = await athlete('/dashboard');
   assert.equal((res.text.match(/Loved your film/g) || []).length, 1);
   assert.doesNotMatch(res.text, /again/);
-  assert.match(res.text, /State University/);
+  assert.match(res.text, /Invited/);
+  assert.match(res.text, /2 times on the coach's calendar/);
+  const requestId = res.text.match(/\/visit-requests\/(\d+)\/schedule/)[1];
 
-  const requestId = res.text.match(/\/visit-requests\/(\d+)\/respond/)[1];
+  res = await athlete(`/visit-requests/${requestId}/schedule`);
+  assert.match(res.text, /Saturday, November 14, 2099/);
+  assert.match(res.text, /Saturday, November 21, 2099/);
+  assert.match(res.text, /Athletics center front desk/);
+  const [slotA, slotB] = [...res.text.matchAll(/name="slot_id" value="(\d+)"/g)].map((m) => m[1]);
 
-  // Another coach's account cannot respond, nor can a different athlete.
+  // Other people can't see or use this invitation.
   await signUp(otherCoach, { name: 'Coach Lee', email: 'lee@college.edu', role: 'coach' });
-  res = await otherCoach(`/visit-requests/${requestId}/respond`, { method: 'POST', form: { decision: 'accept' } });
-  assert.equal(res.status, 403);
+  assert.equal((await otherCoach(`/visit-requests/${requestId}/schedule`)).status, 403);
+  const casey = client();
+  await signUp(casey, { name: 'Casey Park', email: 'casey@example.com', role: 'athlete' });
+  assert.equal((await casey(`/visit-requests/${requestId}/schedule`)).status, 404);
 
-  res = await athlete(`/visit-requests/${requestId}/respond`, {
+  // A different coach's time can't be booked through Kim's invitation.
+  await otherCoach('/calendar/slots', { method: 'POST', form: { starts_at: '2099-12-01T10:00' } });
+  const leeSlot = (await otherCoach('/calendar')).text.match(/\/calendar\/slots\/(\d+)\/delete/)[1];
+  res = await athlete(`/visit-requests/${requestId}/schedule`, { method: 'POST', form: { slot_id: leeSlot } });
+  assert.equal(res.location, `/visit-requests/${requestId}/schedule`);
+
+  // Jordan books slot A, which unlocks contact info for Kim only.
+  res = await athlete(`/visit-requests/${requestId}/schedule`, {
     method: 'POST',
-    form: { decision: 'accept', response_message: 'See you there!' },
+    form: { slot_id: slotA, response_message: 'See you there!' },
   });
-  assert.equal(res.status, 302);
+  assert.equal(res.location, '/dashboard');
+  res = await athlete('/dashboard');
+  assert.match(res.text, /Scheduled/);
+  assert.match(res.text, /Sat, Nov 14, 2099 · 10:00 AM – 12:00 PM/);
 
   res = await coach(`/athletes/${athleteId}`);
   assert.match(res.text, /555-0100/);
   assert.match(res.text, /jordan@example.com/);
-
+  assert.match(res.text, /Scheduled<\/span> Sat, Nov 14, 2099/);
   res = await otherCoach(`/athletes/${athleteId}`);
   assert.doesNotMatch(res.text, /555-0100/);
 
   res = await coach('/dashboard');
-  assert.match(res.text, /accepted/);
+  assert.match(res.text, /Scheduled/);
   assert.match(res.text, /See you there!/);
+  res = await coach('/calendar');
+  assert.match(res.text, /1 of 1 booked/);
+  assert.match(res.text, /Jordan Rivers/);
+
+  // Slot A is now full for other invited athletes; booked slots can't be removed.
+  await coach(`/athletes/${(await casey('/profile/edit', { method: 'POST', form: { sport: 'Basketball' } })).location.split('/').pop()}/visit-requests`, {
+    method: 'POST',
+    form: { message: 'Come visit too!' },
+  });
+  res = await casey('/dashboard');
+  const caseyRequest = res.text.match(/\/visit-requests\/(\d+)\/schedule/)[1];
+  res = await casey(`/visit-requests/${caseyRequest}/schedule`);
+  assert.doesNotMatch(res.text, /November 14/);
+  assert.match(res.text, /November 21/);
+  await casey(`/visit-requests/${caseyRequest}/schedule`, { method: 'POST', form: { slot_id: slotA } });
+  assert.match((await casey('/dashboard')).text, /Invited/);
+
+  await coach(`/calendar/slots/${slotA}/delete`, { method: 'POST' });
+  assert.match((await coach('/calendar')).text, /November 14/);
+
+  // Reschedule to slot B, cancel, then book slot A again.
+  await athlete(`/visit-requests/${requestId}/schedule`, { method: 'POST', form: { slot_id: slotB } });
+  assert.match((await athlete('/dashboard')).text, /Sat, Nov 21, 2099/);
+  assert.match((await coach('/calendar')).text, /0 of 1 booked/);
+  await athlete(`/visit-requests/${requestId}/cancel`, { method: 'POST' });
+  assert.match((await athlete('/dashboard')).text, /Invited/);
+  assert.doesNotMatch((await coach(`/athletes/${athleteId}`)).text, /555-0100/);
+  await athlete(`/visit-requests/${requestId}/schedule`, { method: 'POST', form: { slot_id: slotA } });
+  assert.match((await coach(`/athletes/${athleteId}`)).text, /555-0100/);
+
+  // Declining closes the invitation.
+  await casey(`/visit-requests/${caseyRequest}/respond`, { method: 'POST', form: { decision: 'decline' } });
+  res = await casey('/dashboard');
+  assert.match(res.text, /declined/);
+  assert.equal((await casey(`/visit-requests/${caseyRequest}/schedule`)).location, '/dashboard');
 });
 
 test('athlete can delete their own video, removing the file', async () => {

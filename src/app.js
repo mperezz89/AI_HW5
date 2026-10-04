@@ -5,6 +5,7 @@ const session = require('express-session');
 const { openDatabase } = require('./db');
 const { unreadCount } = require('./routes/messages');
 const { SPORTS, US_STATES, stars, timeAgo } = require('./constants');
+const { formatSlot, formatTimeRange } = require('./calendar');
 
 function createApp({
   dbPath = path.join(__dirname, '..', 'data', 'app.db'),
@@ -24,6 +25,8 @@ function createApp({
   app.locals.US_STATES = US_STATES;
   app.locals.stars = stars;
   app.locals.timeAgo = timeAgo;
+  app.locals.formatSlot = formatSlot;
+  app.locals.formatTimeRange = formatTimeRange;
 
   app.use(express.urlencoded({ extended: false }));
   app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -52,6 +55,7 @@ function createApp({
   app.use(require('./routes/videos'));
   app.use(require('./routes/athletes'));
   app.use(require('./routes/visits'));
+  app.use(require('./routes/calendar'));
   app.use(require('./routes/feed'));
   app.use(require('./routes/people'));
   app.use(require('./routes/messages'));

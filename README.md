@@ -8,7 +8,7 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 - Sign up as an athlete and build a recruiting profile: sport, position, graduation year, school, city/state, height, weight, GPA, bio, and phone.
 - Upload raw game video (MP4, MOV, or WebM, up to 500 MB) with a title, opponent, game date, and notes.
 - Dashboard with highlight count, total views from other users, and incoming visit requests.
-- Accept or decline a visit request, with an optional reply.
+- Book a visit from a coach's invitation by picking an open time on the coach's calendar, with an optional note. Athletes can also reschedule, cancel, or decline.
 - Delete your own videos. This also removes the file from disk.
 
 **Home feed (Instagram-style)**
@@ -34,12 +34,13 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 - Sign up as a coach and list your school, title, sport, and division.
 - Search athletes by name, school, city, or Athlete ID. Filter by sport, position, grad year, state, and minimum star ranking, and sort by national ranking.
 - Watch highlights. Video views are counted, and an athlete's own views are not.
-- Send a visit request with a message, a proposed date, and optionally the video that caught your eye. You can have only one pending request per athlete at a time.
-- Track request status (pending, accepted, or declined) on your dashboard.
+- **Visit calendar:** add open visit times with a date, start time, length, how many athletes can attend, and location or notes. A single time can be a one-on-one visit or a group event such as a junior day.
+- **Invitations:** invite an athlete to visit from their profile, with a message and optionally the video that caught your eye. The invitation opens your calendar to that athlete, who books any open time. Only invited athletes can see your calendar, and you can have one open invitation or upcoming visit per athlete.
+- See bookings on your calendar and dashboard. Times with bookings can't be removed.
 - Post photos (JPG, PNG, WebP, GIF) or videos with captions to your team's page. Posts appear in athletes' feeds.
 - A team is one school's program in one sport and is created from the school and sport in your settings. Coaches at the same school and sport share a team page; the school name is matched ignoring capitalization. Coaches can delete their own posts.
 
-**Privacy:** an athlete's email and phone stay hidden from coaches until the athlete accepts that coach's visit request. Many athletes on a platform like this are minors, so contact is opt-in.
+**Privacy:** an athlete's email and phone stay hidden from a coach until the athlete schedules a visit with that coach. Many athletes on a platform like this are minors, so contact is opt-in.
 
 ## Tech stack
 
@@ -76,9 +77,10 @@ src/
   auth.js           Password hashing and auth/role middleware
   constants.js      Sports, states, allowed video types
   uploads.js        Shared upload middleware for videos and images
+  calendar.js       Visit calendar time helpers
   routes/           auth, profile, videos, athletes (search/profile), visits (dashboard + requests),
                     feed (home feed, teams, team posts, likes, follows), people (follows, coach profiles),
-                    messages (direct and team-inbox messaging)
+                    messages (direct and team-inbox messaging), calendar (visit times and booking)
 views/              EJS templates
 public/styles.css   Styles (light and dark mode)
 test/app.test.js    End-to-end tests
@@ -93,6 +95,7 @@ test/app.test.js    End-to-end tests
 - Verification: rankings and Athlete IDs are self-reported. Consider verifying them against an official source or labeling them as self-reported.
 - Teams: school names are typed in freely, so "Notre Dame" and "University of Notre Dame" become separate teams. Use a fixed list of schools, and verify that coaches belong to the team they post as.
 - Feed: comments, Stories-style highlights, notifications when a followed team posts, and liking without reloading the page.
+- Visit calendar: times are entered and shown as campus-local time without a time zone. Add per-school time zones, calendar file (.ics) or Google Calendar invites, reminders, and a way for coaches to move or cancel booked visits with notice to the athlete. Consider recruiting-calendar rules for official and unofficial visits.
 - Messaging safety: many athletes are minors. Add reporting and blocking, keep messages for moderation, and consider letting parents or guardians see messages and coaches' messaging rules (for example, NCAA recruiting contact periods).
 - Messaging: new messages only appear after a page reload. Add live updates and email or push notifications.
 - Product: saved athletes for coaches, email notifications for new visit requests, and reporting and moderation for uploaded content.

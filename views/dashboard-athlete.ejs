@@ -25,40 +25,56 @@
 <dl class="stats card">
   <div><dt>Highlights</dt><dd><%= videos.length %></dd></div>
   <div><dt>Total views</dt><dd><%= totalViews %></dd></div>
-  <div><dt>Visit requests</dt><dd><%= requests.length %></dd></div>
+  <div><dt>Invitations</dt><dd><%= requests.length %></dd></div>
   <div><dt>Pending</dt><dd><%= requests.filter(function (r) { return r.status === 'pending'; }).length %></dd></div>
 </dl>
 
-<h2>Visit requests from coaches</h2>
+<h2>Visit invitations</h2>
 <% if (!requests.length) { %>
-  <p class="muted">No requests yet. Keep your profile complete and upload fresh game film to get noticed.</p>
+  <p class="muted">No invitations yet. Keep your profile complete and upload fresh game film to get noticed.</p>
 <% } %>
-<% requests.forEach(function (r) { %>
+<% requests.forEach(function (r) { var scheduled = r.status === 'accepted' && r.starts_at; %>
   <article class="card request">
     <div class="request-head">
       <div>
         <strong><a class="post-team" href="/coaches/<%= r.coach_id %>"><%= r.coach_name %></a></strong><% if (r.coach_title) { %>, <%= r.coach_title %><% } %>
         <div class="muted small"><%= [r.school, r.division].filter(Boolean).join(' · ') || 'Program not listed' %></div>
       </div>
-      <span class="status status-<%= r.status %>"><%= r.status %></span>
+      <span class="status status-<%= r.status %>"><%= scheduled ? 'Scheduled' : r.status === 'pending' ? 'Invited' : r.status %></span>
     </div>
+    <% if (scheduled) { %>
+      <div class="visit-when">
+        <strong><%= formatSlot(r.starts_at, r.duration_minutes) %></strong>
+        <% if (r.location) { %><div class="small"><%= r.location %></div><% } %>
+      </div>
+    <% } %>
     <p class="pre"><%= r.message %></p>
-    <p class="small"><a href="/messages/new?coach=<%= r.coach_id %>">Message <%= r.coach_name %></a></p>
     <p class="muted small">
-      <% if (r.proposed_date) { %>Proposed visit: <%= r.proposed_date %> · <% } %>
       <% if (r.video_title) { %>Re: <a href="/videos/<%= r.video_id %>"><%= r.video_title %></a> · <% } %>
-      Sent <%= r.created_at.slice(0, 10) %>
+      Sent <%= r.created_at.slice(0, 10) %> · <a href="/messages/new?coach=<%= r.coach_id %>">Message <%= r.coach_name %></a>
     </p>
     <% if (r.status === 'pending') { %>
-      <form method="post" action="/visit-requests/<%= r.id %>/respond" class="form">
-        <label>Reply (optional) <input name="response_message" placeholder="Thanks coach! I'd love to visit."></label>
-        <div class="actions">
-          <button class="btn" name="decision" value="accept">Accept</button>
-          <button class="btn btn-secondary" name="decision" value="decline">Decline</button>
-        </div>
-      </form>
+      <div class="actions">
+        <a class="btn" href="/visit-requests/<%= r.id %>/schedule">Choose a visit time</a>
+        <span class="muted small" style="align-self: center"><%= r.open_times %> time<%= r.open_times === 1 ? '' : 's' %> on the coach's calendar</span>
+      </div>
+      <details class="decline">
+        <summary class="small muted">Not interested?</summary>
+        <form method="post" action="/visit-requests/<%= r.id %>/respond" class="form">
+          <label>Note to the coach (optional) <input name="response_message" placeholder="Thank you, but I'm going another direction."></label>
+          <button class="btn btn-secondary" name="decision" value="decline">Decline invitation</button>
+        </form>
+      </details>
     <% } else if (r.status === 'accepted') { %>
       <p class="small">Coach contact: <a href="mailto:<%= r.coach_email %>"><%= r.coach_email %></a></p>
+      <% if (scheduled) { %>
+        <div class="actions">
+          <a class="btn btn-secondary btn-small" href="/visit-requests/<%= r.id %>/schedule">Reschedule</a>
+          <form method="post" action="/visit-requests/<%= r.id %>/cancel" class="inline" onsubmit="return confirm('Cancel this visit?')">
+            <button class="btn btn-secondary btn-small">Cancel visit</button>
+          </form>
+        </div>
+      <% } %>
     <% } %>
   </article>
 <% }) %>
