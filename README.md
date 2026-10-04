@@ -31,14 +31,16 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 - The inbox shows unread counts, and a badge in the navigation bar shows unread messages.
 
 **Coaches**
-- Sign up as a coach and list your school, title, sport, and division.
+- Sign up as a coach and fill in your **coach profile**: **title (Coach, Recruiter, or Assistant), Team ID, team name, and team sport**. Division is optional. Coaches enter these themselves.
+- Coaches see their profile under "My profile". A checklist on the dashboard shows which fields are still missing.
+- **Team ID** decides which team page a coach belongs to. Coaches who enter the same Team ID (matching ignores case) share one team, even if they typed the team name differently, and they join under the name already registered for that team. A Team ID can't be reused for a different sport, and a team registered with one Team ID can't be claimed with another. Without a Team ID, coaches are matched by team name and sport.
 - Search athletes by name, school, city, or Athlete ID. Filter by sport, position, grad year, state, and minimum star ranking, and sort by national ranking.
 - Watch highlights. Video views are counted, and an athlete's own views are not.
 - **Visit calendar:** add open visit times with a date, start time, length, how many athletes can attend, and location or notes. A single time can be a one-on-one visit or a group event such as a junior day.
 - **Invitations:** invite an athlete to visit from their profile, with a message and optionally the video that caught your eye. The invitation opens your calendar to that athlete, who books any open time. Only invited athletes can see your calendar, and you can have one open invitation or upcoming visit per athlete.
 - See bookings on your calendar and dashboard. Times with bookings can't be removed.
 - Post photos (JPG, PNG, WebP, GIF) or videos with captions to your team's page. Posts appear in athletes' feeds.
-- A team is one school's program in one sport and is created from the school and sport in your settings. Coaches at the same school and sport share a team page; the school name is matched ignoring capitalization. Coaches can delete their own posts.
+- A team is one school's program in one sport, set up from the coach profile (see Team ID above). Coaches can delete their own posts.
 
 **Privacy:** an athlete's email and phone stay hidden from a coach until the athlete schedules a visit with that coach. Many athletes on a platform like this are minors, so contact is opt-in.
 
@@ -93,7 +95,7 @@ test/app.test.js    End-to-end tests
 - Sessions: replace the in-memory session store with a persistent one, such as Redis or SQLite.
 - Security: add CSRF tokens, rate limiting on login and upload, email verification, and verification that coaches really work for the programs they list.
 - Verification: rankings and Athlete IDs are self-reported. Consider verifying them against an official source or labeling them as self-reported.
-- Teams: school names are typed in freely, so "Notre Dame" and "University of Notre Dame" become separate teams. Use a fixed list of schools, and verify that coaches belong to the team they post as.
+- Teams: Team IDs and team names are self-reported. Check Team IDs against an official list of programs, and verify that coaches belong to the team they post as. Without a Team ID, "Notre Dame" and "University of Notre Dame" still become separate teams.
 - Feed: comments, Stories-style highlights, notifications when a followed team posts, and liking without reloading the page.
 - Visit calendar: times are entered and shown as campus-local time without a time zone. Add per-school time zones, calendar file (.ics) or Google Calendar invites, reminders, and a way for coaches to move or cancel booked visits with notice to the athlete. Consider recruiting-calendar rules for official and unofficial visits.
 - Messaging safety: many athletes are minors. Add reporting and blocking, keep messages for moderation, and consider letting parents or guardians see messages and coaches' messaging rules (for example, NCAA recruiting contact periods).

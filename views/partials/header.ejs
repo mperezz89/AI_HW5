@@ -25,7 +25,7 @@
         <a href="/messages">Messages<% if (unreadMessages) { %><span class="nav-badge" aria-label="<%= unreadMessages %> unread"><%= unreadMessages %></span><% } %></a>
         <a href="/calendar">Calendar</a>
         <a href="/teams/mine">My team</a>
-        <a href="/profile/edit">Settings</a>
+        <a href="/coaches/<%= currentUser.id %>">My profile</a>
         <a class="btn btn-small" href="/posts/new">New post</a>
       <% } %>
       <form method="post" action="/logout" class="inline"><button class="link">Log out</button></form>

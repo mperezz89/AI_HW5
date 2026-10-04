@@ -32,6 +32,20 @@ const PREFERRED_ATHLETE_FIELDS = [
   { key: 'bio', label: 'Profile bio' },
 ];
 
+const COACH_TITLES = ['Coach', 'Recruiter', 'Assistant'];
+
+// The profile attributes every coach is asked to fill in, in display order.
+const PREFERRED_COACH_FIELDS = [
+  { key: 'title', label: 'Title' },
+  { key: 'team_code', label: 'Team ID' },
+  { key: 'school', label: 'Team name' },
+  { key: 'sport', label: 'Team sport' },
+];
+
+function missingCoachFields(profile) {
+  return PREFERRED_COACH_FIELDS.filter(({ key }) => !profile[key]);
+}
+
 function missingPreferredFields(profile) {
   return PREFERRED_ATHLETE_FIELDS.filter(({ key }) =>
     key === 'location' ? !(profile.city || profile.state) : profile[key] === null || profile[key] === undefined || profile[key] === ''
@@ -51,4 +65,7 @@ function timeAgo(sqliteTimestamp, now = Date.now()) {
   return `${Math.floor(seconds / size)}${label} ago`;
 }
 
-module.exports = { SPORTS, US_STATES, VIDEO_MIME_TYPES, IMAGE_MIME_TYPES, PREFERRED_ATHLETE_FIELDS, missingPreferredFields, stars, timeAgo };
+module.exports = {
+  COACH_TITLES,
+  PREFERRED_COACH_FIELDS,
+  missingCoachFields, SPORTS, US_STATES, VIDEO_MIME_TYPES, IMAGE_MIME_TYPES, PREFERRED_ATHLETE_FIELDS, missingPreferredFields, stars, timeAgo };

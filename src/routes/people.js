@@ -1,5 +1,6 @@
 const express = require('express');
 const { requireAuth } = require('../auth');
+const { missingCoachFields } = require('../constants');
 
 const router = express.Router();
 
@@ -39,8 +40,8 @@ router.get('/coaches/:id', requireAuth, (req, res, next) => {
   const db = req.app.locals.db;
   const coach = db
     .prepare(
-      `SELECT u.id, u.name, u.role, c.title, c.school, c.sport, c.division, c.team_id
-       FROM users u LEFT JOIN coach_profiles c ON c.user_id = u.id
+      `SELECT u.id, u.name, u.role, c.title, c.school, c.sport, c.division, c.team_id, t.team_code
+       FROM users u LEFT JOIN coach_profiles c ON c.user_id = u.id LEFT JOIN teams t ON t.id = c.team_id
        WHERE u.id = ? AND u.role = 'coach'`
     )
     .get(req.params.id);
@@ -54,6 +55,7 @@ router.get('/coaches/:id', requireAuth, (req, res, next) => {
     posts,
     social: followStats(db, coach.id, req.user.id),
     isSelf: req.user.id === coach.id,
+    missing: req.user.id === coach.id ? missingCoachFields(coach) : [],
   });
 });
 

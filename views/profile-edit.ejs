@@ -1,6 +1,6 @@
 <%- include('partials/header') %>
 <section class="card narrow">
-  <h1><%= currentUser.role === 'athlete' ? 'Your athlete profile' : 'Your program' %></h1>
+  <h1><%= currentUser.role === 'athlete' ? 'Your athlete profile' : 'Your coach profile' %></h1>
   <% if (error) { %><p class="error"><%= error %></p><% } %>
   <form method="post" action="/profile/edit" class="form">
     <label>Full name <input name="name" value="<%= currentUser.name %>"></label>
@@ -49,18 +49,29 @@
       <label>Phone <span class="muted">(only shared with coaches whose visit request you accept)</span>
         <input name="phone" value="<%= profile.phone || '' %>"></label>
     <% } else { %>
-      <p class="muted small">Your school and sport set up your team page, where you post content to athletes' feeds.</p>
-      <label>School / program <input name="school" value="<%= profile.school || '' %>"></label>
+      <h2 class="form-section">Coach profile</h2>
+      <p class="muted small">Athletes see this on your profile, team page, and invitations.</p>
+      <label>Title
+        <select name="title">
+          <option value="">—</option>
+          <% COACH_TITLES.forEach(function (t) { %><option <%= profile.title === t ? 'selected' : '' %>><%= t %></option><% }) %>
+        </select>
+      </label>
+      <label>Team ID <input name="team_code" maxlength="40" value="<%= profile.team_code || '' %>" placeholder="e.g. NCAA organization ID"></label>
+      <p class="muted small flush">Coaches who enter the same Team ID share one team page.</p>
       <div class="row">
-        <label>Title <input name="title" value="<%= profile.title || '' %>" placeholder="Assistant Coach"></label>
-        <label>Sport
+        <label>Team name <input name="school" value="<%= profile.school || '' %>" placeholder="e.g. State University"></label>
+        <label>Team sport
           <select name="sport">
             <option value="">—</option>
             <% SPORTS.forEach(function (s) { %><option <%= profile.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
           </select>
         </label>
-        <label>Division <input name="division" value="<%= profile.division || '' %>" placeholder="NCAA D1"></label>
       </div>
+      <p class="muted small flush">Your team name and sport set up your team page, where you post to athletes' feeds.</p>
+
+      <h2 class="form-section">Additional details <span class="muted small">(optional)</span></h2>
+      <label>Division <input name="division" value="<%= profile.division || '' %>" placeholder="NCAA D1"></label>
     <% } %>
     <button class="btn">Save</button>
   </form>

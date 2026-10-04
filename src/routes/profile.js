@@ -1,6 +1,7 @@
 const express = require('express');
 const { requireAuth } = require('../auth');
-const { findOrCreateTeam } = require('../db');
+const { resolveTeam } = require('../db');
+const { COACH_TITLES } = require('../constants');
 
 const router = express.Router();
 
@@ -21,7 +22,8 @@ const ATHLETE_FIELDS = [
   'gpa',
   'phone',
 ];
-const COACH_FIELDS = ['school', 'title', 'sport', 'division'];
+const COACH_FIELDS = ['title', 'school', 'sport', 'division'];
+const MAX_TEAM_CODE_LENGTH = 40;
 
 // Whole-number athlete fields and their allowed ranges.
 const ATHLETE_INTEGER_FIELDS = {
@@ -34,7 +36,9 @@ const ATHLETE_INTEGER_FIELDS = {
 function loadProfile(db, user) {
   return user.role === 'athlete'
     ? db.prepare('SELECT * FROM athlete_profiles WHERE user_id = ?').get(user.id)
-    : db.prepare('SELECT * FROM coach_profiles WHERE user_id = ?').get(user.id);
+    : db
+        .prepare('SELECT c.*, t.team_code FROM coach_profiles c LEFT JOIN teams t ON t.id = c.team_id WHERE c.user_id = ?')
+        .get(user.id);
 }
 
 function validateAthlete(db, userId, profile) {
@@ -69,9 +73,21 @@ router.post('/profile/edit', requireAuth, (req, res) => {
     })
   );
 
+  let team = null;
   if (isAthlete) {
     const error = validateAthlete(db, req.user.id, profile);
     if (error) return res.status(400).render('profile-edit', { title: 'Edit profile', profile, error });
+  } else {
+    profile.team_code = (req.body.team_code || '').trim() || null;
+    let error = null;
+    if (profile.title && !COACH_TITLES.includes(profile.title)) error = 'Choose Coach, Recruiter, or Assistant as your title.';
+    else if (profile.sport && !req.app.locals.SPORTS.includes(profile.sport)) error = 'Choose a team sport from the list.';
+    else if (profile.team_code && profile.team_code.length > MAX_TEAM_CODE_LENGTH) error = 'Team ID is too long.';
+    else if (profile.team_code && !(profile.school && profile.sport)) error = 'Add your team name and team sport along with your Team ID.';
+    else if (profile.school && profile.sport) ({ team, error } = resolveTeam(db, req.user.id, profile));
+    if (error) return res.status(400).render('profile-edit', { title: 'Edit profile', profile, error });
+    // A Team ID joins an existing team, so use that team's name.
+    if (team) profile.school = team.school;
   }
 
   const name = (req.body.name || '').trim();
@@ -82,12 +98,15 @@ router.post('/profile/edit', requireAuth, (req, res) => {
   db.prepare(`UPDATE ${table} SET ${assignments} WHERE user_id = ?`).run(...fields.map((f) => profile[f]), req.user.id);
 
   if (!isAthlete) {
-    const teamId = profile.school && profile.sport ? findOrCreateTeam(db, profile) : null;
-    db.prepare('UPDATE coach_profiles SET team_id = ? WHERE user_id = ?').run(teamId, req.user.id);
+    db.prepare('UPDATE coach_profiles SET team_id = ? WHERE user_id = ?').run(team ? team.id : null, req.user.id);
   }
 
-  req.session.flash = 'Profile saved.';
-  res.redirect(isAthlete ? `/athletes/${req.user.id}` : '/dashboard');
+  const typedName = (req.body.school || '').trim();
+  req.session.flash =
+    team && typedName.toLowerCase() !== team.school.toLowerCase()
+      ? `Profile saved. Team ID ${team.team_code} is registered to ${team.school}, so you've joined that team.`
+      : 'Profile saved.';
+  res.redirect(isAthlete ? `/athletes/${req.user.id}` : `/coaches/${req.user.id}`);
 });
 
 module.exports = router;

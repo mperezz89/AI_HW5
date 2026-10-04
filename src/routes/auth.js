@@ -38,7 +38,7 @@ router.post('/register', (req, res) => {
   req.session.regenerate(() => {
     req.session.userId = userId;
     req.session.flash = 'Welcome! Finish your profile so coaches can find you.';
-    if (form.role === 'coach') req.session.flash = 'Welcome! Add your program details so athletes know who you are.';
+    if (form.role === 'coach') req.session.flash = 'Welcome! Fill in your coach profile so athletes know who you are.';
     res.redirect('/profile/edit');
   });
 });

@@ -1,6 +1,11 @@
 const express = require('express');
 const { requireAuth, requireRole } = require('../auth');
-const { missingPreferredFields, PREFERRED_ATHLETE_FIELDS } = require('../constants');
+const {
+  missingPreferredFields,
+  PREFERRED_ATHLETE_FIELDS,
+  missingCoachFields,
+  PREFERRED_COACH_FIELDS,
+} = require('../constants');
 const { nowLocal, upcomingSlots } = require('../calendar');
 
 const router = express.Router();
@@ -53,9 +58,20 @@ router.get('/dashboard', requireAuth, (req, res) => {
        ORDER BY r.created_at DESC, r.id DESC`
     )
     .all(req.user.id);
-  const profile = db.prepare('SELECT * FROM coach_profiles WHERE user_id = ?').get(req.user.id) || {};
+  const profile =
+    db
+      .prepare('SELECT c.*, t.team_code FROM coach_profiles c LEFT JOIN teams t ON t.id = c.team_id WHERE c.user_id = ?')
+      .get(req.user.id) || {};
+  const missing = missingCoachFields(profile);
   const openTimes = upcomingSlots(db, req.user.id, { openOnly: true }).length;
-  res.render('dashboard-coach', { title: 'Dashboard', requests, profile, openTimes });
+  res.render('dashboard-coach', {
+    title: 'Dashboard',
+    requests,
+    profile,
+    openTimes,
+    missing,
+    totalFields: PREFERRED_COACH_FIELDS.length,
+  });
 });
 
 router.post('/athletes/:id/visit-requests', requireRole('coach'), (req, res, next) => {

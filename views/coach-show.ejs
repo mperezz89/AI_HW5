@@ -4,14 +4,25 @@
   <div class="grow">
     <h1><%= coach.name %></h1>
     <p class="muted"><%= [coach.title, coach.school].filter(Boolean).join(' · ') || 'Coach' %></p>
-    <% if (coach.team_id) { %>
-      <p class="small">Team: <a href="/teams/<%= coach.team_id %>"><%= coach.school %> <%= coach.sport %></a><% if (coach.division) { %> · <%= coach.division %><% } %></p>
-    <% } %>
     <%- include('partials/follow-stats', { personId: coach.id, social: social }) %>
+    <dl class="stats">
+      <div><dt>Title</dt><dd><%= coach.title || '—' %></dd></div>
+      <div><dt>Team ID</dt><dd class="athlete-id"><%= coach.team_code || '—' %></dd></div>
+      <div><dt>Team name</dt><dd><% if (coach.team_id) { %><a class="post-team" href="/teams/<%= coach.team_id %>"><%= coach.school %></a><% } else { %><%= coach.school || '—' %><% } %></dd></div>
+      <div><dt>Team sport</dt><dd><%= coach.sport || '—' %></dd></div>
+      <% if (coach.division) { %><div><dt>Division</dt><dd><%= coach.division %></dd></div><% } %>
+    </dl>
+    <% if (isSelf && missing.length) { %>
+      <div class="flash">
+        Complete your profile so athletes know who you are. Still missing:
+        <%= missing.map(function (f) { return f.label; }).join(', ') %>.
+        <a href="/profile/edit">Edit profile</a>
+      </div>
+    <% } %>
   </div>
   <div class="actions flush">
     <% if (isSelf) { %>
-      <a class="btn btn-secondary" href="/profile/edit">Edit</a>
+      <a class="btn btn-secondary" href="/profile/edit">Edit profile</a>
     <% } else if (currentUser.role === 'athlete') { %>
       <a class="btn" href="/messages/new?coach=<%= coach.id %>">Message</a>
     <% } %>

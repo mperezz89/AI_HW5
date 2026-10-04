@@ -167,6 +167,9 @@ const ADDED_COLUMNS = {
     star_rating: 'INTEGER CHECK (star_rating BETWEEN 1 AND 5)',
     national_rank: 'INTEGER',
   },
+  teams: {
+    team_code: 'TEXT',
+  },
   visit_requests: {
     slot_id: 'INTEGER REFERENCES visit_slots(id) ON DELETE SET NULL',
   },
@@ -185,6 +188,17 @@ function migrate(db) {
   db.exec(
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_athlete_code ON athlete_profiles(athlete_code COLLATE NOCASE) WHERE athlete_code IS NOT NULL'
   );
+
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_team_code ON teams(team_code COLLATE NOCASE) WHERE team_code IS NOT NULL');
+
+  // Titles used to be free text; map them onto the fixed choices.
+  db.exec(`
+    UPDATE coach_profiles SET title = CASE
+      WHEN lower(title) LIKE '%assist%' THEN 'Assistant'
+      WHEN lower(title) LIKE '%recruit%' THEN 'Recruiter'
+      ELSE 'Coach' END
+    WHERE title IS NOT NULL AND title NOT IN ('Coach', 'Recruiter', 'Assistant')
+  `);
 
   // Coaches who filled in school and sport before teams existed get linked to their team.
   const unlinked = db
@@ -219,4 +233,34 @@ function openDatabase(dbPath) {
   return db;
 }
 
-module.exports = { openDatabase, findOrCreateTeam };
+// Works out which team a coach's profile points at. Coaches who enter the same Team ID share a team;
+// without one, the team name and sport decide. Returns { team } or { error }.
+function resolveTeam(db, coachId, { school, sport, division, team_code: code }) {
+  const byCode = code ? db.prepare('SELECT * FROM teams WHERE team_code = ? COLLATE NOCASE').get(code) : null;
+  let team = byCode;
+
+  if (byCode && byCode.sport !== sport) {
+    return { error: `Team ID ${code} belongs to ${byCode.school} ${byCode.sport}. Check the Team ID or team sport.` };
+  }
+  if (!team) {
+    const byName = db.prepare('SELECT * FROM teams WHERE school = ? COLLATE NOCASE AND sport = ?').get(school, sport);
+    if (byName && code && byName.team_code) {
+      const member = db.prepare('SELECT 1 FROM coach_profiles WHERE user_id = ? AND team_id = ?').get(coachId, byName.id);
+      if (!member) {
+        return { error: `${byName.school} ${byName.sport} is already registered with a different Team ID.` };
+      }
+    }
+    if (byName && code) db.prepare('UPDATE teams SET team_code = ? WHERE id = ?').run(code, byName.id);
+    team = byName && { ...byName, team_code: code || byName.team_code };
+  }
+  if (!team) {
+    const { lastInsertRowid } = db
+      .prepare('INSERT INTO teams (school, sport, division, team_code) VALUES (?, ?, ?, ?)')
+      .run(school, sport, division || null, code || null);
+    return { team: db.prepare('SELECT * FROM teams WHERE id = ?').get(Number(lastInsertRowid)) };
+  }
+  if (division) db.prepare('UPDATE teams SET division = ? WHERE id = ?').run(division, team.id);
+  return { team };
+}
+
+module.exports = { openDatabase, findOrCreateTeam, resolveTeam };

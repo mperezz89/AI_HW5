@@ -1,8 +1,26 @@
 <%- include('partials/header') %>
 <h1>Coach dashboard</h1>
-<% if (!profile.school) { %>
-  <p class="flash">Add your school and program on <a href="/profile/edit">My program</a> so athletes know who's reaching out.</p>
-<% } %>
+<section class="card">
+  <div class="request-head">
+    <div>
+      <h2 class="flush">Your coach profile</h2>
+      <p class="muted small">
+        <%= [profile.title, profile.school, profile.sport, profile.team_code && ('Team ID ' + profile.team_code)].filter(Boolean).join(' · ') || 'Not filled in yet' %>
+      </p>
+    </div>
+    <div class="actions flush">
+      <a class="btn btn-secondary btn-small" href="/coaches/<%= currentUser.id %>">View</a>
+      <a class="btn btn-small" href="/profile/edit">Edit</a>
+    </div>
+  </div>
+  <p class="small"><strong><%= totalFields - missing.length %> of <%= totalFields %></strong> profile fields complete</p>
+  <% if (missing.length) { %>
+    <p class="small muted">Still missing:</p>
+    <ul class="checklist small">
+      <% missing.forEach(function (f) { %><li><%= f.label %></li><% }) %>
+    </ul>
+  <% } %>
+</section>
 <div class="actions">
   <a class="btn" href="/calendar">Visit calendar (<%= openTimes %> open)</a>
   <a class="btn btn-secondary" href="/athletes<%= profile.sport ? '?sport=' + encodeURIComponent(profile.sport) : '' %>">Browse athletes</a>

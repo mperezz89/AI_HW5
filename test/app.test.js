@@ -97,7 +97,7 @@ test('upload rejects non-video files and oversized files', async () => {
 
 test('coaches cannot upload videos', async () => {
   await signUp(coach, { name: 'Coach Kim', email: 'kim@college.edu', role: 'coach' });
-  await coach('/profile/edit', { method: 'POST', form: { school: 'State University', title: 'Assistant Coach', sport: 'Basketball', division: 'NCAA D1' } });
+  await coach('/profile/edit', { method: 'POST', form: { school: 'State University', title: 'Assistant', sport: 'Basketball', division: 'NCAA D1' } });
   const res = await coach('/videos', { method: 'POST', body: videoForm({ title: 'x' }) });
   assert.equal(res.status, 403);
 });
@@ -365,7 +365,7 @@ test('coaches post to their team page; setup is required first', async () => {
   assert.equal(res.status, 403);
 
   // A second coach from the same school and sport joins the same team, regardless of capitalization.
-  await otherCoach('/profile/edit', { method: 'POST', form: { school: 'state university', sport: 'Basketball', title: 'Head Coach' } });
+  await otherCoach('/profile/edit', { method: 'POST', form: { school: 'state university', sport: 'Basketball', title: 'Coach' } });
   await otherCoach('/posts', { method: 'POST', body: postForm('Camp registration is open') });
   res = await otherCoach('/teams/mine');
   const teamPath = res.location;
@@ -497,7 +497,7 @@ test('athletes build a following of athletes and coaches; Following feed shows t
 
   // Coach profile page with follow counts; following yourself is a no-op.
   res = await athlete(`/coaches/${kimId}`);
-  assert.match(res.text, /Assistant Coach · State University/);
+  assert.match(res.text, /Assistant · State University/);
   assert.match(res.text, /<strong>1<\/strong> follower</);
   await athlete(`/people/${athleteId}/follow`, { method: 'POST' });
   res = await athlete(`/athletes/${athleteId}`);
@@ -564,4 +564,87 @@ test('athletes message coaches directly and teams through a shared inbox', async
   const riley = client();
   await riley('/login', { method: 'POST', form: { email: 'riley@example.com', password: 'password123' } });
   assert.equal((await riley(directPath)).status, 404);
+});
+
+test('coaches fill in title, Team ID, team name, and team sport', async () => {
+  const drew = client();
+  await signUp(drew, { name: 'Drew Hall', email: 'drew@lakeside.edu', role: 'coach' });
+
+  let res = await drew('/dashboard');
+  assert.match(res.text, /<strong>0 of 4<\/strong> profile fields complete/);
+  assert.match(res.text, /<li>Team ID<\/li>/);
+
+  // Title must be one of the three choices, and a Team ID needs a team name and sport.
+  res = await drew('/profile/edit', { method: 'POST', form: { title: 'Head Honcho' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /Choose Coach, Recruiter, or Assistant/);
+  res = await drew('/profile/edit', { method: 'POST', form: { team_code: 'LAKE-WBB' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /Add your team name and team sport/);
+
+  res = await drew('/profile/edit', {
+    method: 'POST',
+    form: { title: 'Recruiter', team_code: 'LAKE-WBB', school: 'Lakeside University', sport: 'Basketball', division: 'NCAA D3' },
+  });
+  assert.equal(res.status, 302);
+  const profilePath = res.location;
+  assert.match(profilePath, /^\/coaches\/\d+$/);
+
+  res = await drew(profilePath);
+  assert.match(res.text, /<dt>Title<\/dt><dd>Recruiter<\/dd>/);
+  assert.match(res.text, /LAKE-WBB/);
+  assert.match(res.text, /Lakeside University/);
+  assert.match(res.text, /<dt>Team sport<\/dt><dd>Basketball<\/dd>/);
+  assert.doesNotMatch(res.text, /Still missing/);
+  res = await drew('/dashboard');
+  assert.match(res.text, /<strong>4 of 4<\/strong> profile fields complete/);
+
+  // The form shows saved values back.
+  res = await drew('/profile/edit');
+  assert.match(res.text, /<option selected>Recruiter<\/option>/);
+  assert.match(res.text, /value="LAKE-WBB"/);
+
+  // Another coach entering the same Team ID (any capitalization) joins that team under its name.
+  const morgan = client();
+  await signUp(morgan, { name: 'Morgan Fry', email: 'morgan@lakeside.edu', role: 'coach' });
+  res = await morgan('/profile/edit', {
+    method: 'POST',
+    form: { title: 'Assistant', team_code: 'lake-wbb', school: 'Lakeside Univ.', sport: 'Basketball' },
+  });
+  assert.equal(res.status, 302);
+  res = await morgan(res.location);
+  assert.match(res.text, /registered to Lakeside University/);
+  const teamPath = res.text.match(/<a class="post-team" href="(\/teams\/\d+)"/)[1];
+  res = await morgan(teamPath);
+  assert.match(res.text, /Team ID LAKE-WBB/);
+  assert.match(res.text, /Drew Hall/);
+  assert.match(res.text, /Morgan Fry/);
+
+  // A Team ID can't be reused for a different sport or a team already registered with another ID.
+  const sam = client();
+  await signUp(sam, { name: 'Sam Lee', email: 'sam@lakeside.edu', role: 'coach' });
+  res = await sam('/profile/edit', { method: 'POST', form: { team_code: 'LAKE-WBB', school: 'Lakeside University', sport: 'Soccer' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /belongs to Lakeside University Basketball/);
+  res = await sam('/profile/edit', { method: 'POST', form: { team_code: 'OTHER-1', school: 'Lakeside University', sport: 'Basketball' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /already registered with a different Team ID/);
+});
+
+test('existing free-text coach titles map onto Coach, Recruiter, or Assistant', () => {
+  const { openDatabase } = require('../src/db');
+  const file = path.join(tmpDir, 'titles.db');
+  let db = openDatabase(file);
+  const insert = db.prepare("INSERT INTO users (email, password_hash, role, name) VALUES (?, 'x', 'coach', ?)");
+  const titles = { 'Assistant Coach': 'Assistant', 'Recruiting Coordinator': 'Recruiter', 'Head Coach': 'Coach', Recruiter: 'Recruiter' };
+  for (const [i, title] of Object.keys(titles).entries()) {
+    const id = Number(insert.run(`c${i}@x.edu`, `C${i}`).lastInsertRowid);
+    db.prepare('INSERT INTO coach_profiles (user_id, title) VALUES (?, ?)').run(id, title);
+  }
+  db.close();
+
+  db = openDatabase(file);
+  const after = db.prepare('SELECT title FROM coach_profiles ORDER BY user_id').all().map((r) => r.title);
+  assert.deepEqual(after, Object.values(titles));
+  db.close();
 });

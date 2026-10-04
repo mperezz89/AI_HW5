@@ -3,7 +3,7 @@
   <div class="team-avatar team-avatar-lg" aria-hidden="true"><%= team.school.trim().charAt(0).toUpperCase() %></div>
   <div class="grow">
     <h1><%= team.school %></h1>
-    <p class="muted"><%= [team.sport, team.division].filter(Boolean).join(' · ') %></p>
+    <p class="muted"><%= [team.sport, team.division, team.team_code && ('Team ID ' + team.team_code)].filter(Boolean).join(' · ') %></p>
     <p class="team-counts"><strong><%= posts.length %></strong> post<%= posts.length === 1 ? '' : 's' %> · <strong><%= followers %></strong> follower<%= followers === 1 ? '' : 's' %></p>
     <% if (coaches.length) { %>
       <p class="small muted">Coaches:

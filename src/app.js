@@ -4,7 +4,7 @@ const express = require('express');
 const session = require('express-session');
 const { openDatabase } = require('./db');
 const { unreadCount } = require('./routes/messages');
-const { SPORTS, US_STATES, stars, timeAgo } = require('./constants');
+const { SPORTS, US_STATES, COACH_TITLES, stars, timeAgo } = require('./constants');
 const { formatSlot, formatTimeRange } = require('./calendar');
 
 function createApp({
@@ -23,6 +23,7 @@ function createApp({
   app.locals.maxUploadBytes = maxUploadBytes;
   app.locals.SPORTS = SPORTS;
   app.locals.US_STATES = US_STATES;
+  app.locals.COACH_TITLES = COACH_TITLES;
   app.locals.stars = stars;
   app.locals.timeAgo = timeAgo;
   app.locals.formatSlot = formatSlot;
