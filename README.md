@@ -8,7 +8,7 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 - Sign up as an athlete and build a recruiting profile: sport, position, graduation year, school, city/state, height, weight, GPA, bio, and phone.
 - Upload raw game video (MP4, MOV, or WebM, up to 500 MB) with a title, opponent, game date, and notes.
 - Dashboard with highlight count, total views from other users, and incoming visit requests.
-- Book a visit from a coach's invitation by picking an open time on the coach's calendar, with an optional note. Athletes can also reschedule, cancel, or decline.
+- When a coach opens their calendar to an athlete's Athlete ID, the athlete books a visit by picking an open time on that calendar, with an optional note. Athletes can also reschedule, cancel, or decline.
 - Delete your own videos. This also removes the file from disk.
 
 **Home feed (Instagram-style)**
@@ -37,7 +37,10 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 - Search athletes by name, school, city, or Athlete ID. Filter by sport, position, grad year, state, and minimum star ranking, and sort by national ranking.
 - Watch highlights. Video views are counted, and an athlete's own views are not.
 - **Visit calendar:** add open visit times with a date, start time, length, how many athletes can attend, and location or notes. A single time can be a one-on-one visit or a group event such as a junior day.
-- **Invitations:** invite an athlete to visit from their profile, with a message and optionally the video that caught your eye. The invitation opens your calendar to that athlete, who books any open time. Only invited athletes can see your calendar, and you can have one open invitation or upcoming visit per athlete.
+- **Private calendar, opened by Athlete ID:** a coach's calendar is never public. Coaches open it to specific athletes they're interested in by entering the athlete's **Athlete ID** and a message, either on the calendar page or from the athlete's profile, optionally mentioning the video that caught their eye. Only those athletes can see and book the coach's open times.
+  - Athlete IDs match regardless of case. An athlete without an Athlete ID can't be given access until they add one.
+  - A coach can have one open invitation or upcoming visit per athlete.
+  - The calendar page lists the athletes with access and whether each is choosing a time or scheduled. Coaches can withdraw access before the athlete books.
 - See bookings on your calendar and dashboard. Times with bookings can't be removed.
 - Post photos (JPG, PNG, WebP, GIF) or videos with captions to your team's page. Posts appear in athletes' feeds.
 - A team is one school's program in one sport, set up from the coach profile (see Team ID above). Coaches can delete their own posts.

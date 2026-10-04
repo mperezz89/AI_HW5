@@ -4,7 +4,11 @@ const { nowLocal, isValidLocal, upcomingSlots, groupByDay } = require('../calend
 
 const router = express.Router();
 
-function renderCalendar(req, res, { status = 200, error = null, form = {} } = {}) {
+function localPath(p, fallback) {
+  return typeof p === 'string' && p.startsWith('/') && !p.startsWith('//') ? p : fallback;
+}
+
+function renderCalendar(req, res, { status = 200, error = null, form = {}, access: accessForm = {} } = {}) {
   const db = req.app.locals.db;
   const slots = upcomingSlots(db, req.user.id);
   const bookings = db
@@ -15,13 +19,30 @@ function renderCalendar(req, res, { status = 200, error = null, form = {} } = {}
     )
     .all(req.user.id);
   for (const slot of slots) slot.athletes = bookings.filter((b) => b.slot_id === slot.id);
-  const invited = db
+  // Athletes this coach has opened the calendar to: waiting to pick a time, or booked for an upcoming visit.
+  const access = db
     .prepare(
-      `SELECT u.id, u.name FROM visit_requests r JOIN users u ON u.id = r.athlete_id
-       WHERE r.coach_id = ? AND r.status = 'pending' ORDER BY r.created_at DESC`
+      `SELECT r.id, r.status, r.created_at, u.id AS athlete_id, u.name, a.athlete_code, a.sport, a.position,
+              s.starts_at, s.duration_minutes
+       FROM visit_requests r
+       JOIN users u ON u.id = r.athlete_id
+       LEFT JOIN athlete_profiles a ON a.user_id = r.athlete_id
+       LEFT JOIN visit_slots s ON s.id = r.slot_id
+       WHERE r.coach_id = ? AND (r.status = 'pending' OR (r.status = 'accepted' AND s.starts_at > ?))
+       ORDER BY r.status = 'pending' DESC, r.created_at DESC`
     )
-    .all(req.user.id);
-  res.status(status).render('calendar', { title: 'Visit calendar', days: groupByDay(slots), invited, error, form, minStart: nowLocal() });
+    .all(req.user.id, nowLocal());
+  const accessFormValues = { athlete_code: req.query.athlete_id || '', message: '', ...accessForm };
+  res.status(status).render('calendar', {
+    title: 'Visit calendar',
+    days: groupByDay(slots),
+    access,
+    error,
+    form,
+    accessError: accessForm.error || null,
+    accessForm: accessFormValues,
+    minStart: nowLocal(),
+  });
 }
 
 router.get('/calendar', requireRole('coach'), (req, res) => renderCalendar(req, res));
@@ -62,6 +83,65 @@ router.post('/calendar/slots/:id/delete', requireRole('coach'), (req, res, next)
   }
   db.prepare('DELETE FROM visit_slots WHERE id = ?').run(slot.id);
   req.session.flash = 'Visit time removed.';
+  res.redirect('/calendar');
+});
+
+// Coaches open their calendar to one athlete at a time by Athlete ID. The calendar is never public:
+// only athletes with an open invitation (a visit request) can see and book its times.
+router.post('/calendar/access', requireRole('coach'), (req, res) => {
+  const db = req.app.locals.db;
+  const code = (req.body.athlete_code || '').trim();
+  const message = (req.body.message || '').trim();
+  const fromProfile = localPath(req.body.back, null);
+  const fail = (error) => {
+    if (fromProfile) {
+      req.session.flash = error;
+      return res.redirect(fromProfile);
+    }
+    return renderCalendar(req, res, { status: 400, access: { athlete_code: code, message, error } });
+  };
+
+  if (!code) return fail('Enter the Athlete ID of the athlete you want to invite.');
+  const athlete = db
+    .prepare(
+      `SELECT u.id, u.name, a.athlete_code FROM athlete_profiles a JOIN users u ON u.id = a.user_id
+       WHERE a.athlete_code = ? COLLATE NOCASE`
+    )
+    .get(code);
+  if (!athlete) return fail(`No athlete has the Athlete ID ${code}. Check the ID with the athlete.`);
+  if (!message) return fail('Include a message so the athlete knows why you are inviting them.');
+
+  const open = db
+    .prepare(
+      `SELECT 1 FROM visit_requests r LEFT JOIN visit_slots s ON s.id = r.slot_id
+       WHERE r.coach_id = ? AND r.athlete_id = ?
+         AND (r.status = 'pending' OR (r.status = 'accepted' AND s.starts_at > ?))`
+    )
+    .get(req.user.id, athlete.id, nowLocal());
+  if (open) return fail(`Your calendar is already open to ${athlete.name}.`);
+
+  let videoId = req.body.video_id ? Number(req.body.video_id) : null;
+  if (videoId && !db.prepare('SELECT 1 FROM videos WHERE id = ? AND athlete_id = ?').get(videoId, athlete.id)) videoId = null;
+
+  db.prepare('INSERT INTO visit_requests (coach_id, athlete_id, video_id, message) VALUES (?, ?, ?, ?)').run(
+    req.user.id,
+    athlete.id,
+    videoId,
+    message
+  );
+  req.session.flash = `Your visit calendar is now open to ${athlete.name} (${athlete.athlete_code}). They can pick a time to visit.`;
+  res.redirect(fromProfile || '/calendar');
+});
+
+// Withdraw access before the athlete books; booked visits are handled by messaging the athlete.
+router.post('/calendar/access/:id/withdraw', requireRole('coach'), (req, res, next) => {
+  const db = req.app.locals.db;
+  const request = db
+    .prepare("SELECT r.id, u.name FROM visit_requests r JOIN users u ON u.id = r.athlete_id WHERE r.id = ? AND r.coach_id = ? AND r.status = 'pending'")
+    .get(req.params.id, req.user.id);
+  if (!request) return next();
+  db.prepare('DELETE FROM visit_requests WHERE id = ?').run(request.id);
+  req.session.flash = `${request.name} no longer has access to your calendar.`;
   res.redirect('/calendar');
 });
 

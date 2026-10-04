@@ -53,25 +53,29 @@
 
 <% if (currentUser && currentUser.role === 'coach') { %>
 <section class="card" id="request">
-  <h2>Invite to visit</h2>
+  <h2>Open your calendar</h2>
   <% visitRequests.forEach(function (r) { %>
-    <p class="small">Invitation sent <%= r.created_at.slice(0, 10) %>:
+    <p class="small">Calendar opened <%= r.created_at.slice(0, 10) %>:
       <% if (r.status === 'accepted' && r.starts_at) { %>
         <span class="status status-accepted">Scheduled</span> <%= formatSlot(r.starts_at, r.duration_minutes) %>
       <% } else { %>
-        <span class="status status-<%= r.status %>"><%= r.status === 'pending' ? 'Waiting for a time' : r.status %></span>
+        <span class="status status-<%= r.status %>"><%= r.status === 'pending' ? 'Choosing a time' : r.status %></span>
       <% } %>
       <% if (r.response_message) { %>“<%= r.response_message %>”<% } %></p>
   <% }) %>
   <% if (hasOpenInvite) { %>
     <p class="muted">This athlete can book any open time on <a href="/calendar">your visit calendar</a>. Bookings show up there and on your dashboard.</p>
+  <% } else if (!athlete.athlete_code) { %>
+    <p class="notice">This athlete hasn't added an Athlete ID yet. Calendars are opened by Athlete ID, so you can invite them once they add one. You can follow them in the meantime.</p>
   <% } else { %>
-    <p class="muted small">Sending an invitation opens <a href="/calendar">your visit calendar</a> to this athlete so they can pick a time to visit.
+    <p class="muted small">Your calendar is private. Opening it to <span class="athlete-id"><%= athlete.athlete_code %></span> lets this athlete see and book your open times.
       You have <strong><%= coachOpenTimes %></strong> open time<%= coachOpenTimes === 1 ? '' : 's' %>.</p>
     <% if (!coachOpenTimes) { %>
       <p class="notice">You have no open times yet. <a href="/calendar">Add visit times</a> so this athlete has something to choose from.</p>
     <% } %>
-    <form method="post" action="/athletes/<%= athlete.id %>/visit-requests" class="form">
+    <form method="post" action="/calendar/access" class="form">
+      <input type="hidden" name="athlete_code" value="<%= athlete.athlete_code %>">
+      <input type="hidden" name="back" value="/athletes/<%= athlete.id %>">
       <label>Message <textarea name="message" rows="4" required placeholder="Introduce yourself and your program, and why you'd like them to visit."></textarea></label>
       <label>About which video?
         <select name="video_id">
@@ -79,7 +83,7 @@
           <% videos.forEach(function (v) { %><option value="<%= v.id %>" <%= String(v.id) === preselectVideo ? 'selected' : '' %>><%= v.title %></option><% }) %>
         </select>
       </label>
-      <button class="btn">Send invitation</button>
+      <button class="btn">Open calendar to <%= athlete.name %></button>
     </form>
   <% } %>
 </section>

@@ -2,7 +2,7 @@
 <div class="calendar-layout">
   <section>
     <h1>Visit calendar</h1>
-    <p class="muted">Add the times you can host visits. Your calendar is only visible to athletes you've invited, and they can book any open time.</p>
+    <p class="muted">Your calendar is private. Add the times you can host visits, then open it to the athletes you're interested in by their Athlete ID. Only those athletes can see and book your open times.</p>
     <% if (!days.length) { %><p class="card muted">No upcoming visit times. Add one to get started.</p><% } %>
     <% days.forEach(function (d) { %>
       <h2 class="day-title"><%= d.day %></h2>
@@ -49,10 +49,33 @@
         <button class="btn">Add time</button>
       </form>
     </div>
+    <div class="card" id="access">
+      <h2 class="side-title">Open your calendar to an athlete</h2>
+      <% if (accessError) { %><p class="error"><%= accessError %></p><% } %>
+      <form method="post" action="/calendar/access" class="form">
+        <label>Athlete ID <input name="athlete_code" required maxlength="60" value="<%= accessForm.athlete_code %>" placeholder="e.g. NCAA-2027-0042" class="athlete-id"></label>
+        <label>Message <textarea name="message" rows="3" required placeholder="Introduce yourself and your program, and why you'd like them to visit."><%= accessForm.message %></textarea></label>
+        <button class="btn">Open calendar</button>
+      </form>
+      <p class="muted small">Athletes list their Athlete ID on their profile.</p>
+    </div>
     <div class="card">
-      <h2 class="side-title">Invited, not yet scheduled</h2>
-      <% if (!invited.length) { %><p class="muted small">Nobody is waiting to pick a time. Invite athletes from their profile pages.</p><% } %>
-      <% invited.forEach(function (a) { %><div class="small"><a href="/athletes/<%= a.id %>"><%= a.name %></a></div><% }) %>
+      <h2 class="side-title">Athletes with access</h2>
+      <% if (!access.length) { %><p class="muted small">Nobody can see your calendar yet.</p><% } %>
+      <% access.forEach(function (a) { %>
+        <div class="access-row">
+          <div class="grow">
+            <a href="/athletes/<%= a.athlete_id %>"><%= a.name %></a>
+            <div class="small muted"><span class="athlete-id"><%= a.athlete_code || 'No ID' %></span><%= a.sport ? ' · ' + a.sport : '' %><%= a.position ? ' · ' + a.position : '' %></div>
+            <div class="small"><% if (a.status === 'accepted') { %><span class="status status-accepted">Scheduled</span> <%= formatSlot(a.starts_at, a.duration_minutes) %><% } else { %><span class="status status-pending">Choosing a time</span><% } %></div>
+          </div>
+          <% if (a.status === 'pending') { %>
+            <form method="post" action="/calendar/access/<%= a.id %>/withdraw" class="inline" onsubmit="return confirm('Remove this athlete\'s access to your calendar?')">
+              <button class="btn btn-secondary btn-small">Withdraw</button>
+            </form>
+          <% } %>
+        </div>
+      <% }) %>
     </div>
   </aside>
 </div>

@@ -22,7 +22,7 @@
           <button class="btn btn-danger">Delete video</button>
         </form>
       <% } else if (currentUser && currentUser.role === 'coach') { %>
-        <a class="btn" href="/athletes/<%= video.athlete_id %>?video=<%= video.id %>#request">Invite to visit</a>
+        <a class="btn" href="/athletes/<%= video.athlete_id %>?video=<%= video.id %>#request">Open calendar to athlete</a>
       <% } %>
     </div>
   </div>

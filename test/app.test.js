@@ -117,9 +117,16 @@ test('views count only for non-owners', async () => {
 });
 
 test('coaches open a visit calendar to invited athletes, who book a time', async () => {
+  // Without an Athlete ID, a coach can't open their calendar to an athlete.
   let res = await coach(`/athletes/${athleteId}`);
   assert.doesNotMatch(res.text, /555-0100/);
   assert.match(res.text, /Contact info is shared once/);
+  assert.match(res.text, /hasn't added an Athlete ID yet/);
+  await athlete('/profile/edit', {
+    method: 'POST',
+    form: { athlete_code: 'NCAA-2027-0042', sport: 'Basketball', position: 'Point Guard', grad_year: '2027', state: 'IN', high_school: 'Central HS', phone: '555-0100' },
+  });
+  res = await coach(`/athletes/${athleteId}`);
   assert.match(res.text, /You have no open times yet/);
 
   // Coach Kim adds open times; past or malformed times are rejected.
@@ -137,13 +144,29 @@ test('coaches open a visit calendar to invited athletes, who book a time', async
   assert.match(res.text, /Saturday, November 14, 2099/);
   assert.match(res.text, /10:00 AM – 12:00 PM/);
 
-  // Inviting opens the calendar; a second open invitation is blocked.
-  res = await coach(`/athletes/${athleteId}/visit-requests`, {
+  // The calendar is private: athletes without access have nothing to book.
+  res = await athlete('/dashboard');
+  assert.doesNotMatch(res.text, /Choose a visit time/);
+
+  // Opening the calendar takes a real Athlete ID and a message.
+  res = await coach('/calendar/access', { method: 'POST', form: { athlete_code: 'NOPE-123', message: 'Hi' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /No athlete has the Athlete ID NOPE-123/);
+  res = await coach('/calendar/access', { method: 'POST', form: { athlete_code: 'NCAA-2027-0042', message: '' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /Include a message/);
+
+  // Athlete IDs match regardless of case; a second open invitation is blocked.
+  res = await coach('/calendar/access', {
     method: 'POST',
-    form: { message: 'Loved your film — come visit campus!', video_id: String(videoId) },
+    form: { athlete_code: 'ncaa-2027-0042', message: 'Loved your film — come visit campus!', video_id: String(videoId) },
   });
-  assert.equal(res.status, 302);
-  await coach(`/athletes/${athleteId}/visit-requests`, { method: 'POST', form: { message: 'again' } });
+  assert.equal(res.location, '/calendar');
+  res = await coach('/calendar');
+  assert.match(res.text, /now open to Jordan Rivers \(NCAA-2027-0042\)/);
+  assert.match(res.text, /Athletes with access[\s\S]*Jordan Rivers[\s\S]*Choosing a time/);
+  res = await coach('/calendar/access', { method: 'POST', form: { athlete_code: 'NCAA-2027-0042', message: 'again' } });
+  assert.match(res.text, /already open to Jordan Rivers/);
   res = await athlete('/dashboard');
   assert.equal((res.text.match(/Loved your film/g) || []).length, 1);
   assert.doesNotMatch(res.text, /again/);
@@ -195,10 +218,13 @@ test('coaches open a visit calendar to invited athletes, who book a time', async
   assert.match(res.text, /Jordan Rivers/);
 
   // Slot A is now full for other invited athletes; booked slots can't be removed.
-  await coach(`/athletes/${(await casey('/profile/edit', { method: 'POST', form: { sport: 'Basketball' } })).location.split('/').pop()}/visit-requests`, {
+  await casey('/profile/edit', { method: 'POST', form: { sport: 'Basketball', athlete_code: 'CASEY-28' } });
+  // Opening from the athlete's profile page returns there.
+  res = await coach('/calendar/access', {
     method: 'POST',
-    form: { message: 'Come visit too!' },
+    form: { athlete_code: 'CASEY-28', message: 'Come visit too!', back: '/athletes/1' },
   });
+  assert.equal(res.location, '/athletes/1');
   res = await casey('/dashboard');
   const caseyRequest = res.text.match(/\/visit-requests\/(\d+)\/schedule/)[1];
   res = await casey(`/visit-requests/${caseyRequest}/schedule`);
@@ -219,6 +245,22 @@ test('coaches open a visit calendar to invited athletes, who book a time', async
   assert.doesNotMatch((await coach(`/athletes/${athleteId}`)).text, /555-0100/);
   await athlete(`/visit-requests/${requestId}/schedule`, { method: 'POST', form: { slot_id: slotA } });
   assert.match((await coach(`/athletes/${athleteId}`)).text, /555-0100/);
+
+  // Coaches can withdraw access before the athlete books, but not after.
+  const taylor = client();
+  await signUp(taylor, { name: 'Taylor Brooks', email: 'taylor@example.com', role: 'athlete' });
+  await taylor('/profile/edit', { method: 'POST', form: { athlete_code: 'TB-2028' } });
+  await coach('/calendar/access', { method: 'POST', form: { athlete_code: 'TB-2028', message: 'Visit us!' } });
+  res = await taylor('/dashboard');
+  const taylorRequest = res.text.match(/\/visit-requests\/(\d+)\/schedule/)[1];
+  res = await coach('/calendar');
+  const withdrawIds = [...res.text.matchAll(/\/calendar\/access\/(\d+)\/withdraw/g)].map((m) => m[1]);
+  assert.ok(withdrawIds.includes(taylorRequest));
+  assert.ok(!withdrawIds.includes(requestId), 'booked visits cannot be withdrawn');
+  assert.equal((await otherCoach(`/calendar/access/${taylorRequest}/withdraw`, { method: 'POST' })).status, 404);
+  await coach(`/calendar/access/${taylorRequest}/withdraw`, { method: 'POST' });
+  assert.equal((await taylor(`/visit-requests/${taylorRequest}/schedule`)).status, 404);
+  assert.doesNotMatch((await taylor('/dashboard')).text, /Choose a visit time/);
 
   // Declining closes the invitation.
   await casey(`/visit-requests/${caseyRequest}/respond`, { method: 'POST', form: { decision: 'decline' } });
@@ -251,7 +293,7 @@ test('login rejects bad passwords and does not open-redirect', async () => {
 test('athlete fills in the preferred profile attributes', async () => {
   let res = await athlete('/dashboard');
   assert.match(res.text, /profile fields complete/);
-  assert.match(res.text, /<li>Athlete ID<\/li>/);
+  assert.match(res.text, /<li>Star ranking<\/li>/);
 
   res = await athlete('/profile/edit', {
     method: 'POST',

@@ -31,7 +31,7 @@
 
 <h2>Visit invitations</h2>
 <% if (!requests.length) { %>
-  <p class="muted">No invitations yet. Keep your profile complete and upload fresh game film to get noticed.</p>
+  <p class="muted">No invitations yet. Coaches open their visit calendars to athletes by Athlete ID<%= profile.athlete_code ? '' : ', so add yours to your profile' %>. Keep your profile complete and upload fresh game film to get noticed.</p>
 <% } %>
 <% requests.forEach(function (r) { var scheduled = r.status === 'accepted' && r.starts_at; %>
   <article class="card request">

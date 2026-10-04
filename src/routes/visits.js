@@ -74,42 +74,6 @@ router.get('/dashboard', requireAuth, (req, res) => {
   });
 });
 
-router.post('/athletes/:id/visit-requests', requireRole('coach'), (req, res, next) => {
-  const db = req.app.locals.db;
-  const athlete = db.prepare("SELECT id FROM users WHERE id = ? AND role = 'athlete'").get(req.params.id);
-  if (!athlete) return next();
-
-  const message = (req.body.message || '').trim();
-  let videoId = req.body.video_id ? Number(req.body.video_id) : null;
-  if (videoId && !db.prepare('SELECT 1 FROM videos WHERE id = ? AND athlete_id = ?').get(videoId, athlete.id)) {
-    videoId = null;
-  }
-
-  const back = `/athletes/${athlete.id}`;
-  if (!message) {
-    req.session.flash = 'Please include a message with your visit invitation.';
-    return res.redirect(back);
-  }
-  const open = db
-    .prepare(
-      `SELECT 1 FROM visit_requests r LEFT JOIN visit_slots s ON s.id = r.slot_id
-       WHERE r.coach_id = ? AND r.athlete_id = ?
-         AND (r.status = 'pending' OR (r.status = 'accepted' AND s.starts_at > ?))`
-    )
-    .get(req.user.id, athlete.id, nowLocal());
-  if (open) {
-    req.session.flash = 'You already have an open invitation or upcoming visit with this athlete.';
-    return res.redirect(back);
-  }
-
-  db.prepare(
-    'INSERT INTO visit_requests (coach_id, athlete_id, video_id, message) VALUES (?, ?, ?, ?)'
-  ).run(req.user.id, athlete.id, videoId, message);
-
-  req.session.flash = 'Invitation sent! Your visit calendar is now open to this athlete.';
-  res.redirect(back);
-});
-
 // Athletes accept an invitation by booking a time (see routes/calendar.js); this handles declining.
 router.post('/visit-requests/:id/respond', requireRole('athlete'), (req, res, next) => {
   const db = req.app.locals.db;
