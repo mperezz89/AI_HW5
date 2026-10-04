@@ -11,12 +11,21 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 - Accept or decline a visit request, with an optional reply.
 - Delete your own videos. This also removes the file from disk.
 
+**Home feed (Instagram-style)**
+- After logging in, athletes land on a feed of photo and video posts from college teams.
+- **Following** shows posts from teams the athlete follows. **Discover** shows posts from all teams, filtered to the athlete's sport by default; they can switch to any sport or all sports.
+- A "Teams you might like" panel suggests teams in the athlete's sport that they don't follow yet.
+- Athletes can like posts, follow or unfollow teams, and browse a directory of teams by school and sport.
+- Each team has a page with its division, coaches, follower count, and a grid of its posts.
+
 **Coaches**
 - Sign up as a coach and list your school, title, sport, and division.
 - Search athletes by name, school, city, or Athlete ID. Filter by sport, position, grad year, state, and minimum star ranking, and sort by national ranking.
 - Watch highlights. Video views are counted, and an athlete's own views are not.
 - Send a visit request with a message, a proposed date, and optionally the video that caught your eye. You can have only one pending request per athlete at a time.
 - Track request status (pending, accepted, or declined) on your dashboard.
+- Post photos (JPG, PNG, WebP, GIF) or videos with captions to your team's page. Posts appear in athletes' feeds.
+- A team is one school's program in one sport and is created from the school and sport in your settings. Coaches at the same school and sport share a team page; the school name is matched ignoring capitalization. Coaches can delete their own posts.
 
 **Privacy:** an athlete's email and phone stay hidden from coaches until the athlete accepts that coach's visit request. Many athletes on a platform like this are minors, so contact is opt-in.
 
@@ -54,7 +63,9 @@ src/
   db.js             SQLite schema
   auth.js           Password hashing and auth/role middleware
   constants.js      Sports, states, allowed video types
-  routes/           auth, profile, videos, athletes (search/profile), visits (dashboard + requests)
+  uploads.js        Shared upload middleware for videos and images
+  routes/           auth, profile, videos, athletes (search/profile), visits (dashboard + requests),
+                    feed (home feed, teams, team posts, likes, follows)
 views/              EJS templates
 public/styles.css   Styles (light and dark mode)
 test/app.test.js    End-to-end tests
@@ -67,4 +78,6 @@ test/app.test.js    End-to-end tests
 - Sessions: replace the in-memory session store with a persistent one, such as Redis or SQLite.
 - Security: add CSRF tokens, rate limiting on login and upload, email verification, and verification that coaches really work for the programs they list.
 - Verification: rankings and Athlete IDs are self-reported. Consider verifying them against an official source or labeling them as self-reported.
+- Teams: school names are typed in freely, so "Notre Dame" and "University of Notre Dame" become separate teams. Use a fixed list of schools, and verify that coaches belong to the team they post as.
+- Feed: comments, Stories-style highlights, notifications when a followed team posts, and liking without reloading the page.
 - Product: messaging, saved athletes for coaches, email notifications for new visit requests, and reporting and moderation for uploaded content.

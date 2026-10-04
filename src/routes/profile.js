@@ -1,5 +1,6 @@
 const express = require('express');
 const { requireAuth } = require('../auth');
+const { findOrCreateTeam } = require('../db');
 
 const router = express.Router();
 
@@ -79,6 +80,11 @@ router.post('/profile/edit', requireAuth, (req, res) => {
   const table = isAthlete ? 'athlete_profiles' : 'coach_profiles';
   const assignments = fields.map((f) => `${f} = ?`).join(', ');
   db.prepare(`UPDATE ${table} SET ${assignments} WHERE user_id = ?`).run(...fields.map((f) => profile[f]), req.user.id);
+
+  if (!isAthlete) {
+    const teamId = profile.school && profile.sport ? findOrCreateTeam(db, profile) : null;
+    db.prepare('UPDATE coach_profiles SET team_id = ? WHERE user_id = ?').run(teamId, req.user.id);
+  }
 
   req.session.flash = 'Profile saved.';
   res.redirect(isAthlete ? `/athletes/${req.user.id}` : '/dashboard');

@@ -177,7 +177,7 @@ test('login rejects bad passwords and does not open-redirect', async () => {
   assert.equal(res.status, 401);
   res = await anon('/login', { method: 'POST', form: { email: 'jordan@example.com', password: 'password123', next: '//evil.com' } });
   assert.equal(res.status, 302);
-  assert.equal(res.location, '/dashboard');
+  assert.equal(res.location, '/');
 });
 
 test('athlete fills in the preferred profile attributes', async () => {
@@ -258,4 +258,130 @@ test('existing databases gain the new profile columns', () => {
   const columns = db.prepare('PRAGMA table_info(athlete_profiles)').all().map((c) => c.name);
   for (const c of ['athlete_code', 'position_rank', 'star_rating', 'national_rank']) assert.ok(columns.includes(c), c);
   db.close();
+});
+
+const PNG_1PX = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64'
+);
+
+function postForm(caption, { type = 'image/png', bytes = PNG_1PX, name = 'photo.png' } = {}) {
+  const fd = new FormData();
+  fd.append('caption', caption);
+  fd.append('media', new Blob([bytes], { type }), name);
+  return fd;
+}
+
+test('coaches post to their team page; setup is required first', async () => {
+  // Coach Lee has no school or sport yet, so there is no team to post as.
+  let res = await otherCoach('/posts/new');
+  assert.equal(res.status, 302);
+  assert.equal(res.location, '/profile/edit');
+
+  // Coach Kim set school + sport earlier, so their team exists.
+  res = await coach('/posts', { method: 'POST', body: postForm('Welcome to campus! #GoState') });
+  assert.equal(res.status, 302);
+  res = await coach(res.location);
+  assert.match(res.text, /Welcome to campus!/);
+  assert.match(res.text, /State University/);
+
+  res = await coach('/posts', { method: 'POST', body: postForm('practice clip', { type: 'video/mp4', bytes: Buffer.from('vid'), name: 'a.mp4' }) });
+  assert.equal(res.status, 302);
+
+  res = await coach('/posts', { method: 'POST', body: postForm('bad', { type: 'application/pdf', name: 'a.pdf' }) });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /must be a photo/);
+
+  // Athletes cannot post as a team.
+  res = await athlete('/posts', { method: 'POST', body: postForm('hi') });
+  assert.equal(res.status, 403);
+
+  // A second coach from the same school and sport joins the same team, regardless of capitalization.
+  await otherCoach('/profile/edit', { method: 'POST', form: { school: 'state university', sport: 'Basketball', title: 'Head Coach' } });
+  await otherCoach('/posts', { method: 'POST', body: postForm('Camp registration is open') });
+  res = await otherCoach('/teams/mine');
+  const teamPath = res.location;
+  res = await otherCoach(teamPath);
+  assert.match(res.text, /<strong>3<\/strong> posts/);
+  assert.match(res.text, /Coach Kim/);
+  assert.match(res.text, /Coach Lee/);
+});
+
+test('athlete home is the feed: discover by sport, follow teams, and like posts', async () => {
+  // A football team that should not show up in a basketball athlete's default Discover tab.
+  const fbCoach = client();
+  await signUp(fbCoach, { name: 'Coach Fox', email: 'fox@tech.edu', role: 'coach' });
+  await fbCoach('/profile/edit', { method: 'POST', form: { school: 'Tech College', sport: 'Football' } });
+  await fbCoach('/posts', { method: 'POST', body: postForm('Friday night lights') });
+
+  let res = await athlete('/');
+  assert.equal(res.location, '/feed');
+
+  // Not following anyone yet: lands on Discover, filtered to the athlete's sport.
+  res = await athlete('/feed');
+  assert.match(res.text, /Camp registration is open/);
+  assert.doesNotMatch(res.text, /Friday night lights/);
+  assert.match(res.text, /Teams you might like/);
+
+  res = await athlete('/feed?tab=discover&sport=all');
+  assert.match(res.text, /Friday night lights/);
+
+  res = await athlete('/feed?tab=following');
+  assert.match(res.text, /not following any teams yet/);
+
+  // Follow the football team only; the Following tab shows just its posts.
+  res = await athlete('/teams?sport=Football');
+  const footballTeamId = res.text.match(/action="\/teams\/(\d+)\/follow"/)[1];
+  res = await athlete(`/teams/${footballTeamId}/follow`, { method: 'POST', form: { back: '/teams' } });
+  assert.equal(res.location, '/teams');
+
+  res = await athlete('/feed');
+  assert.match(res.text, /class="active">Following/);
+  assert.match(res.text, /Friday night lights/);
+  assert.doesNotMatch(res.text, /Camp registration is open/);
+
+  // Like, then unlike.
+  const postId = res.text.match(/id="post-(\d+)"/)[1];
+  res = await athlete(`/posts/${postId}/like`, { method: 'POST', form: { back: '/feed?tab=following' } });
+  assert.equal(res.location, `/feed?tab=following#post-${postId}`);
+  res = await athlete(`/posts/${postId}`);
+  assert.match(res.text, /1 like</);
+  assert.match(res.text, /aria-pressed="true"/);
+  await athlete(`/posts/${postId}/like`, { method: 'POST', form: { back: '//evil.com' } });
+  res = await athlete(`/posts/${postId}`);
+  assert.match(res.text, /0 likes/);
+
+  // Following shows on the team page; unfollow toggles it off.
+  res = await athlete(`/teams/${footballTeamId}`);
+  assert.match(res.text, /<strong>1<\/strong> follower</);
+  await athlete(`/teams/${footballTeamId}/follow`, { method: 'POST' });
+  res = await athlete(`/teams/${footballTeamId}`);
+  assert.match(res.text, /<strong>0<\/strong> followers/);
+
+  // Coaches cannot follow teams.
+  res = await coach(`/teams/${footballTeamId}/follow`, { method: 'POST' });
+  assert.equal(res.status, 403);
+});
+
+test('only the author can delete a team post, which removes its file', async () => {
+  let res = await coach('/feed?tab=discover&sport=Basketball');
+  const article = res.text.split('<article').find((a) => a.includes('Welcome to campus'));
+  const postId = article.match(/id="post-(\d+)"/)[1];
+  res = await coach(`/posts/${postId}`);
+  const mediaPath = res.text.match(/src="(\/media\/[^"#]+)/)[1];
+
+  res = await otherCoach(`/posts/${postId}/delete`, { method: 'POST' });
+  assert.equal(res.status, 404);
+  res = await coach(`/posts/${postId}/delete`, { method: 'POST' });
+  assert.equal(res.status, 302);
+  assert.equal((await coach(`/posts/${postId}`)).status, 404);
+  assert.equal((await coach(mediaPath)).status, 404);
+});
+
+test('timeAgo labels', () => {
+  const { timeAgo } = require('../src/constants');
+  const now = Date.parse('2026-10-04T12:00:00Z');
+  assert.equal(timeAgo('2026-10-04 11:59:30', now), 'just now');
+  assert.equal(timeAgo('2026-10-04 09:00:00', now), '3h ago');
+  assert.equal(timeAgo('2026-09-20 12:00:00', now), '2w ago');
 });

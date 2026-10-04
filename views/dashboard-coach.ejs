@@ -3,7 +3,13 @@
 <% if (!profile.school) { %>
   <p class="flash">Add your school and program on <a href="/profile/edit">My program</a> so athletes know who's reaching out.</p>
 <% } %>
-<p><a class="btn" href="/athletes<%= profile.sport ? '?sport=' + encodeURIComponent(profile.sport) : '' %>">Browse athletes</a></p>
+<div class="actions">
+  <a class="btn" href="/athletes<%= profile.sport ? '?sport=' + encodeURIComponent(profile.sport) : '' %>">Browse athletes</a>
+  <% if (profile.team_id) { %>
+    <a class="btn btn-secondary" href="/teams/<%= profile.team_id %>">Your team page</a>
+    <a class="btn btn-secondary" href="/posts/new">New team post</a>
+  <% } %>
+</div>
 
 <h2>Your visit requests</h2>
 <% if (!requests.length) { %>

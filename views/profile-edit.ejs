@@ -49,6 +49,7 @@
       <label>Phone <span class="muted">(only shared with coaches whose visit request you accept)</span>
         <input name="phone" value="<%= profile.phone || '' %>"></label>
     <% } else { %>
+      <p class="muted small">Your school and sport set up your team page, where you post content to athletes' feeds.</p>
       <label>School / program <input name="school" value="<%= profile.school || '' %>"></label>
       <div class="row">
         <label>Title <input name="title" value="<%= profile.title || '' %>" placeholder="Assistant Coach"></label>

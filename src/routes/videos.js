@@ -1,43 +1,19 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
 const express = require('express');
-const multer = require('multer');
+const { singleUpload } = require('../uploads');
 const { requireRole } = require('../auth');
 const { VIDEO_MIME_TYPES } = require('../constants');
 
 const router = express.Router();
 
-const EXTENSIONS = { 'video/mp4': '.mp4', 'video/quicktime': '.mov', 'video/webm': '.webm' };
-
-function uploader(req, res, next) {
-  const { uploadDir, maxUploadBytes } = req.app.locals;
-  fs.mkdirSync(uploadDir, { recursive: true });
-  const upload = multer({
-    storage: multer.diskStorage({
-      destination: uploadDir,
-      filename: (_req, file, cb) => cb(null, crypto.randomUUID() + EXTENSIONS[file.mimetype]),
-    }),
-    limits: { fileSize: maxUploadBytes, files: 1 },
-    fileFilter: (_req, file, cb) => {
-      if (VIDEO_MIME_TYPES.includes(file.mimetype)) return cb(null, true);
-      const err = new Error('Only MP4, MOV, or WebM videos are allowed.');
-      err.code = 'BAD_FILE_TYPE';
-      cb(err);
-    },
-  }).single('video');
-
-  upload(req, res, (err) => {
-    if (!err) return next();
-    const message =
-      err.code === 'LIMIT_FILE_SIZE'
-        ? `Video is too large (max ${Math.round(maxUploadBytes / 1024 / 1024)} MB).`
-        : err.code === 'BAD_FILE_TYPE'
-          ? err.message
-          : 'Upload failed. Please try again.';
-    res.status(400).render('video-new', { title: 'Upload highlight', error: message, form: req.body || {} });
-  });
-}
+const uploader = singleUpload({
+  field: 'video',
+  mimeTypes: VIDEO_MIME_TYPES,
+  typeError: 'Only MP4, MOV, or WebM videos are allowed.',
+  onError: (req, res, error) =>
+    res.status(400).render('video-new', { title: 'Upload highlight', error, form: req.body || {} }),
+});
 
 router.get('/videos/new', requireRole('athlete'), (req, res) => {
   const profile = req.app.locals.db.prepare('SELECT sport FROM athlete_profiles WHERE user_id = ?').get(req.user.id);
@@ -112,8 +88,11 @@ router.post('/videos/:id/delete', requireRole('athlete'), (req, res, next) => {
 // Serves uploaded files with HTTP range support so browsers can seek.
 router.get('/media/:filename', (req, res, next) => {
   const filename = path.basename(req.params.filename);
-  const video = req.app.locals.db.prepare('SELECT 1 FROM videos WHERE filename = ?').get(filename);
-  if (!video) return next();
+  const db = req.app.locals.db;
+  const known =
+    db.prepare('SELECT 1 FROM videos WHERE filename = ?').get(filename) ||
+    db.prepare('SELECT 1 FROM posts WHERE media_filename = ?').get(filename);
+  if (!known) return next();
   res.sendFile(filename, { root: req.app.locals.uploadDir });
 });
 

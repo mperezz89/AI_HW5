@@ -1,0 +1,29 @@
+<%- include('partials/header') %>
+<h1>College teams</h1>
+<form method="get" action="/teams" class="filters card">
+  <input name="q" value="<%= filters.q %>" placeholder="School name">
+  <select name="sport">
+    <option value="">Any sport</option>
+    <% SPORTS.forEach(function (s) { %><option <%= filters.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
+  </select>
+  <button class="btn">Search</button>
+</form>
+<% if (!teams.length) { %><p class="muted">No teams match yet. Teams appear here once a coach sets up their program.</p><% } %>
+<div class="team-list">
+  <% teams.forEach(function (t) { %>
+    <div class="card suggestion">
+      <a class="team-avatar" href="/teams/<%= t.id %>" aria-hidden="true"><%= t.school.trim().charAt(0).toUpperCase() %></a>
+      <div class="grow">
+        <a href="/teams/<%= t.id %>" class="post-team"><%= t.school %></a>
+        <div class="muted small"><%= [t.sport, t.division].filter(Boolean).join(' · ') %> · <%= t.followers %> follower<%= t.followers === 1 ? '' : 's' %> · <%= t.post_count %> post<%= t.post_count === 1 ? '' : 's' %></div>
+      </div>
+      <% if (currentUser.role === 'athlete') { %>
+        <form method="post" action="/teams/<%= t.id %>/follow" class="inline">
+          <input type="hidden" name="back" value="/teams?q=<%= encodeURIComponent(filters.q) %>&sport=<%= encodeURIComponent(filters.sport) %>">
+          <button class="btn btn-small<%= t.following ? ' btn-secondary' : '' %>"><%= t.following ? 'Following' : 'Follow' %></button>
+        </form>
+      <% } %>
+    </div>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

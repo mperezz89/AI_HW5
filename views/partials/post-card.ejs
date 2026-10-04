@@ -1,0 +1,32 @@
+<article class="post card" id="post-<%= post.id %>">
+  <header class="post-head">
+    <a class="team-avatar" href="/teams/<%= post.team_id %>" aria-hidden="true"><%= post.school.trim().charAt(0).toUpperCase() %></a>
+    <div>
+      <a class="post-team" href="/teams/<%= post.team_id %>"><%= post.school %></a>
+      <div class="muted small"><%= post.sport %><% if (post.division) { %> · <%= post.division %><% } %></div>
+    </div>
+    <a class="muted small post-time" href="/posts/<%= post.id %>"><%= timeAgo(post.created_at) %></a>
+  </header>
+  <div class="post-media">
+    <% if (post.media_kind === 'image') { %>
+      <img src="/media/<%= post.media_filename %>" alt="<%= post.caption ? post.caption.slice(0, 120) : 'Post from ' + post.school %>" loading="lazy">
+    <% } else { %>
+      <video controls preload="metadata" playsinline>
+        <source src="/media/<%= post.media_filename %>#t=0.1" type="<%= post.mime_type %>">
+      </video>
+    <% } %>
+  </div>
+  <div class="post-body">
+    <form method="post" action="/posts/<%= post.id %>/like" class="inline">
+      <input type="hidden" name="back" value="<%= back %>">
+      <button class="like-btn<%= post.liked ? ' liked' : '' %>" aria-pressed="<%= post.liked ? 'true' : 'false' %>" aria-label="<%= post.liked ? 'Unlike' : 'Like' %>">
+        <%= post.liked ? '♥' : '♡' %>
+      </button>
+    </form>
+    <strong class="small"><%= post.like_count %> like<%= post.like_count === 1 ? '' : 's' %></strong>
+    <% if (post.caption) { %>
+      <p class="pre"><a class="post-team" href="/teams/<%= post.team_id %>"><%= post.school %></a> <%= post.caption %></p>
+    <% } %>
+    <p class="muted small">Posted by <%= post.author_name %></p>
+  </div>
+</article>

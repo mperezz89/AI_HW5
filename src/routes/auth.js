@@ -4,7 +4,7 @@ const { hashPassword, verifyPassword } = require('../auth');
 const router = express.Router();
 
 function safeNext(next) {
-  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') ? next : '/';
 }
 
 router.get('/register', (req, res) => {

@@ -1,0 +1,10 @@
+<%- include('partials/header') %>
+<div class="feed">
+  <%- include('partials/post-card', { post: post, back: '/posts/' + post.id }) %>
+  <% if (currentUser.id === post.author_id) { %>
+    <form method="post" action="/posts/<%= post.id %>/delete" onsubmit="return confirm('Delete this post?')">
+      <button class="btn btn-danger">Delete post</button>
+    </form>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

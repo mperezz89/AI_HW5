@@ -11,13 +11,19 @@
   <a class="brand" href="/">Highlight<span>Reel</span></a>
   <nav>
     <% if (currentUser) { %>
-      <a href="/dashboard">Dashboard</a>
-      <a href="/athletes">Find athletes</a>
       <% if (currentUser.role === 'athlete') { %>
+        <a href="/feed">Feed</a>
+        <a href="/teams">Teams</a>
+        <a href="/dashboard">Dashboard</a>
         <a href="/athletes/<%= currentUser.id %>">My profile</a>
         <a class="btn btn-small" href="/videos/new">Upload</a>
       <% } else { %>
-        <a href="/profile/edit">My program</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/athletes">Find athletes</a>
+        <a href="/feed">Feed</a>
+        <a href="/teams/mine">My team</a>
+        <a href="/profile/edit">Settings</a>
+        <a class="btn btn-small" href="/posts/new">New post</a>
       <% } %>
       <form method="post" action="/logout" class="inline"><button class="link">Log out</button></form>
     <% } else { %>

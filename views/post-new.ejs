@@ -1,0 +1,12 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1>New team post</h1>
+  <p class="muted">Posting as <strong><%= team.school %> <%= team.sport %></strong>. Athletes who follow your team will see this in their feed.</p>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <form method="post" action="/posts" enctype="multipart/form-data" class="form">
+    <label>Photo or video <input type="file" name="media" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" required></label>
+    <label>Caption <textarea name="caption" rows="4" placeholder="Game day, facilities, camp dates, commitments…"><%= caption %></textarea></label>
+    <button class="btn">Share</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

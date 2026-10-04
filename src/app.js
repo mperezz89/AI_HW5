@@ -3,7 +3,7 @@ const crypto = require('node:crypto');
 const express = require('express');
 const session = require('express-session');
 const { openDatabase } = require('./db');
-const { SPORTS, US_STATES, stars } = require('./constants');
+const { SPORTS, US_STATES, stars, timeAgo } = require('./constants');
 
 function createApp({
   dbPath = path.join(__dirname, '..', 'data', 'app.db'),
@@ -22,6 +22,7 @@ function createApp({
   app.locals.SPORTS = SPORTS;
   app.locals.US_STATES = US_STATES;
   app.locals.stars = stars;
+  app.locals.timeAgo = timeAgo;
 
   app.use(express.urlencoded({ extended: false }));
   app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -49,9 +50,10 @@ function createApp({
   app.use(require('./routes/videos'));
   app.use(require('./routes/athletes'));
   app.use(require('./routes/visits'));
+  app.use(require('./routes/feed'));
 
   app.get('/', (req, res) => {
-    if (req.user) return res.redirect('/dashboard');
+    if (req.user) return res.redirect(req.user.role === 'athlete' ? '/feed' : '/dashboard');
     const recent = db
       .prepare(
         `SELECT v.id, v.title, v.sport, v.filename, v.mime_type, u.name AS athlete_name, u.id AS athlete_id
