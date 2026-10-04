@@ -1,0 +1,18 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1>Create your account</h1>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <form method="post" action="/register" class="form">
+    <fieldset class="role-picker">
+      <legend>I am a…</legend>
+      <label><input type="radio" name="role" value="athlete" <%= form.role !== 'coach' ? 'checked' : '' %>> Athlete</label>
+      <label><input type="radio" name="role" value="coach" <%= form.role === 'coach' ? 'checked' : '' %>> College coach / recruiter</label>
+    </fieldset>
+    <label>Full name <input name="name" required value="<%= form.name || '' %>"></label>
+    <label>Email <input type="email" name="email" required value="<%= form.email || '' %>"></label>
+    <label>Password <input type="password" name="password" required minlength="8"></label>
+    <button class="btn">Sign up</button>
+  </form>
+  <p class="muted">Already have an account? <a href="/login">Log in</a></p>
+</section>
+<%- include('partials/footer') %>

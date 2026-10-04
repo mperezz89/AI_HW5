@@ -1,0 +1,68 @@
+<%- include('partials/header') %>
+<section class="profile card">
+  <div class="profile-head">
+    <div>
+      <h1><%= athlete.name %></h1>
+      <p class="muted">
+        <%= [athlete.sport, athlete.position, athlete.grad_year && ('Class of ' + athlete.grad_year)].filter(Boolean).join(' · ') %>
+      </p>
+      <p class="muted"><%= [athlete.high_school, [athlete.city, athlete.state].filter(Boolean).join(', ')].filter(Boolean).join(' — ') %></p>
+    </div>
+    <% if (isOwner) { %><a class="btn btn-secondary" href="/profile/edit">Edit profile</a><% } %>
+  </div>
+  <dl class="stats">
+    <% if (athlete.height) { %><div><dt>Height</dt><dd><%= athlete.height %></dd></div><% } %>
+    <% if (athlete.weight) { %><div><dt>Weight</dt><dd><%= athlete.weight %></dd></div><% } %>
+    <% if (athlete.gpa) { %><div><dt>GPA</dt><dd><%= athlete.gpa %></dd></div><% } %>
+    <div><dt>Videos</dt><dd><%= videos.length %></dd></div>
+  </dl>
+  <% if (athlete.bio) { %><p class="pre"><%= athlete.bio %></p><% } %>
+  <% if (canSeeContact) { %>
+    <p class="contact"><strong>Contact:</strong> <a href="mailto:<%= athlete.email %>"><%= athlete.email %></a><% if (athlete.phone) { %> · <%= athlete.phone %><% } %></p>
+  <% } else if (currentUser && currentUser.role === 'coach') { %>
+    <p class="muted small">Contact info is shared once the athlete accepts your visit request.</p>
+  <% } %>
+</section>
+
+<h2>Highlights</h2>
+<% if (!videos.length) { %>
+  <p class="muted"><%= isOwner ? 'You have not uploaded any highlights yet.' : 'No highlights uploaded yet.' %>
+    <% if (isOwner) { %><a href="/videos/new">Upload your first one</a>.<% } %></p>
+<% } %>
+<div class="grid">
+  <% videos.forEach(function (v) { %>
+    <article class="card video-card">
+      <%- include('partials/video-player', { filename: v.filename, mime: v.mime_type }) %>
+      <h3><a href="/videos/<%= v.id %>"><%= v.title %></a></h3>
+      <p class="muted small"><%= [v.opponent && ('vs. ' + v.opponent), v.game_date].filter(Boolean).join(' · ') %> · <%= v.views %> views</p>
+    </article>
+  <% }) %>
+</div>
+
+<% if (currentUser && currentUser.role === 'coach') { %>
+<section class="card" id="request">
+  <h2>Request a visit</h2>
+  <% visitRequests.forEach(function (r) { %>
+    <p class="small">Request sent <%= r.created_at.slice(0, 10) %> — <span class="status status-<%= r.status %>"><%= r.status %></span>
+      <% if (r.response_message) { %>: “<%= r.response_message %>”<% } %></p>
+  <% }) %>
+  <% if (hasPending) { %>
+    <p class="muted">Your request is pending. You'll see the athlete's response on your dashboard.</p>
+  <% } else { %>
+    <form method="post" action="/athletes/<%= athlete.id %>/visit-requests" class="form">
+      <label>Message <textarea name="message" rows="4" required placeholder="Introduce yourself and your program, and why you'd like them to visit."></textarea></label>
+      <div class="row">
+        <label>Proposed visit date <input type="date" name="proposed_date"></label>
+        <label>About which video?
+          <select name="video_id">
+            <option value="">General</option>
+            <% videos.forEach(function (v) { %><option value="<%= v.id %>" <%= String(v.id) === preselectVideo ? 'selected' : '' %>><%= v.title %></option><% }) %>
+          </select>
+        </label>
+      </div>
+      <button class="btn">Send visit request</button>
+    </form>
+  <% } %>
+</section>
+<% } %>
+<%- include('partials/footer') %>

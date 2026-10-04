@@ -1,0 +1,30 @@
+{
+  "name": "highlight-reel",
+  "version": "1.0.0",
+  "description": "Athletes upload game highlight videos; college coaches discover them and send visit requests.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mperezz89/AI_HW5.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mperezz89/AI_HW5/issues"
+  },
+  "homepage": "https://github.com/mperezz89/AI_HW5#readme",
+  "dependencies": {
+    "ejs": "^7.0.1",
+    "express": "^4.22.3",
+    "express-session": "^1.19.0",
+    "multer": "^2.4.0"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "private": true
+}

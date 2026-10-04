@@ -1,0 +1,39 @@
+<%- include('partials/header') %>
+<h1>Find athletes</h1>
+<form method="get" action="/athletes" class="filters card">
+  <input name="q" value="<%= filters.q %>" placeholder="Name, school, or city">
+  <select name="sport">
+    <option value="">Any sport</option>
+    <% SPORTS.forEach(function (s) { %><option <%= filters.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
+  </select>
+  <input name="position" value="<%= filters.position %>" placeholder="Position">
+  <input name="grad_year" value="<%= filters.grad_year %>" placeholder="Grad year" inputmode="numeric">
+  <select name="state">
+    <option value="">Any state</option>
+    <% US_STATES.forEach(function (s) { %><option <%= filters.state === s ? 'selected' : '' %>><%= s %></option><% }) %>
+  </select>
+  <button class="btn">Search</button>
+</form>
+<% if (!athletes.length) { %>
+  <p class="muted">No athletes match those filters yet.</p>
+<% } %>
+<div class="grid">
+  <% athletes.forEach(function (a) { %>
+    <article class="card video-card">
+      <% if (a.latest_filename) { %>
+        <%- include('partials/video-player', { filename: a.latest_filename, mime: a.latest_mime }) %>
+      <% } else { %>
+        <div class="placeholder">No video yet</div>
+      <% } %>
+      <h3><a href="/athletes/<%= a.id %>"><%= a.name %></a></h3>
+      <p class="muted">
+        <%= [a.sport, a.position, a.grad_year && ('Class of ' + a.grad_year)].filter(Boolean).join(' · ') || 'Profile incomplete' %>
+      </p>
+      <p class="muted small">
+        <%= [a.high_school, [a.city, a.state].filter(Boolean).join(', ')].filter(Boolean).join(' — ') %>
+      </p>
+      <p class="small"><%= a.video_count %> video<%= a.video_count === 1 ? '' : 's' %> · <%= a.total_views %> views</p>
+    </article>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

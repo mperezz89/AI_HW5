@@ -1,0 +1,30 @@
+<%- include('partials/header') %>
+<section class="video-page">
+  <%- include('partials/video-player', { filename: video.filename, mime: video.mime_type }) %>
+  <div class="card">
+    <h1><%= video.title %></h1>
+    <p class="muted">
+      <a href="/athletes/<%= video.athlete_id %>"><%= video.athlete_name %></a>
+      <% if (video.position) { %> · <%= video.position %><% } %>
+      <% if (video.grad_year) { %> · Class of <%= video.grad_year %><% } %>
+      <% if (video.high_school) { %> · <%= video.high_school %><% } %><% if (video.state) { %>, <%= video.state %><% } %>
+    </p>
+    <p class="meta">
+      <% if (video.sport) { %><span class="tag"><%= video.sport %></span><% } %>
+      <% if (video.opponent) { %>vs. <%= video.opponent %><% } %>
+      <% if (video.game_date) { %> · <%= video.game_date %><% } %>
+      · <%= video.views %> view<%= video.views === 1 ? '' : 's' %>
+    </p>
+    <% if (video.description) { %><p class="pre"><%= video.description %></p><% } %>
+    <div class="actions">
+      <% if (isOwner) { %>
+        <form method="post" action="/videos/<%= video.id %>/delete" onsubmit="return confirm('Delete this video?')">
+          <button class="btn btn-danger">Delete video</button>
+        </form>
+      <% } else if (currentUser && currentUser.role === 'coach') { %>
+        <a class="btn" href="/athletes/<%= video.athlete_id %>?video=<%= video.id %>#request">Request a visit</a>
+      <% } %>
+    </div>
+  </div>
+</section>
+<%- include('partials/footer') %>

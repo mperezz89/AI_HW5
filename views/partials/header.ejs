@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> · Highlight Reel</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">Highlight<span>Reel</span></a>
+  <nav>
+    <% if (currentUser) { %>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/athletes">Find athletes</a>
+      <% if (currentUser.role === 'athlete') { %>
+        <a href="/athletes/<%= currentUser.id %>">My profile</a>
+        <a class="btn btn-small" href="/videos/new">Upload</a>
+      <% } else { %>
+        <a href="/profile/edit">My program</a>
+      <% } %>
+      <form method="post" action="/logout" class="inline"><button class="link">Log out</button></form>
+    <% } else { %>
+      <a href="/login">Log in</a>
+      <a class="btn btn-small" href="/register">Sign up</a>
+    <% } %>
+  </nav>
+</header>
+<main>
+<% if (flash) { %><div class="flash"><%= flash %></div><% } %>

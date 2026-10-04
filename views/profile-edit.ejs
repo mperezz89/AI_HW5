@@ -1,0 +1,52 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1><%= currentUser.role === 'athlete' ? 'Your athlete profile' : 'Your program' %></h1>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <form method="post" action="/profile/edit" class="form">
+    <label>Full name <input name="name" value="<%= currentUser.name %>"></label>
+    <% if (currentUser.role === 'athlete') { %>
+      <div class="row">
+        <label>Sport
+          <select name="sport">
+            <option value="">—</option>
+            <% SPORTS.forEach(function (s) { %><option <%= profile.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
+          </select>
+        </label>
+        <label>Position <input name="position" value="<%= profile.position || '' %>" placeholder="e.g. Point Guard"></label>
+        <label>Grad year <input name="grad_year" inputmode="numeric" value="<%= profile.grad_year || '' %>" placeholder="2028"></label>
+      </div>
+      <label>High school / club <input name="high_school" value="<%= profile.high_school || '' %>"></label>
+      <div class="row">
+        <label>City <input name="city" value="<%= profile.city || '' %>"></label>
+        <label>State
+          <select name="state">
+            <option value="">—</option>
+            <% US_STATES.forEach(function (s) { %><option <%= profile.state === s ? 'selected' : '' %>><%= s %></option><% }) %>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <label>Height <input name="height" value="<%= profile.height || '' %>" placeholder="6'2&quot;"></label>
+        <label>Weight <input name="weight" value="<%= profile.weight || '' %>" placeholder="185 lb"></label>
+        <label>GPA <input name="gpa" value="<%= profile.gpa || '' %>" placeholder="3.6"></label>
+      </div>
+      <label>Bio <textarea name="bio" rows="4" placeholder="Stats, awards, what you bring to a program…"><%= profile.bio || '' %></textarea></label>
+      <label>Phone <span class="muted">(only shared with coaches whose visit request you accept)</span>
+        <input name="phone" value="<%= profile.phone || '' %>"></label>
+    <% } else { %>
+      <label>School / program <input name="school" value="<%= profile.school || '' %>"></label>
+      <div class="row">
+        <label>Title <input name="title" value="<%= profile.title || '' %>" placeholder="Assistant Coach"></label>
+        <label>Sport
+          <select name="sport">
+            <option value="">—</option>
+            <% SPORTS.forEach(function (s) { %><option <%= profile.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
+          </select>
+        </label>
+        <label>Division <input name="division" value="<%= profile.division || '' %>" placeholder="NCAA D1"></label>
+      </div>
+    <% } %>
+    <button class="btn">Save</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

@@ -1,0 +1,23 @@
+<%- include('partials/header') %>
+<section class="card narrow">
+  <h1>Upload a highlight</h1>
+  <p class="muted">Raw game footage is fine — MP4, MOV, or WebM, up to <%= Math.round(maxUploadBytes / 1024 / 1024) %> MB.</p>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <form method="post" action="/videos" enctype="multipart/form-data" class="form">
+    <label>Video file <input type="file" name="video" accept="video/mp4,video/quicktime,video/webm" required></label>
+    <label>Title <input name="title" required value="<%= form.title || '' %>" placeholder="32 pts vs. Central — full game cuts"></label>
+    <div class="row">
+      <label>Sport
+        <select name="sport">
+          <option value="">—</option>
+          <% SPORTS.forEach(function (s) { %><option <%= form.sport === s ? 'selected' : '' %>><%= s %></option><% }) %>
+        </select>
+      </label>
+      <label>Opponent <input name="opponent" value="<%= form.opponent || '' %>"></label>
+      <label>Game date <input type="date" name="game_date" value="<%= form.game_date || '' %>"></label>
+    </div>
+    <label>Description <textarea name="description" rows="3" placeholder="Timestamps, jersey number, what to watch for…"><%= form.description || '' %></textarea></label>
+    <button class="btn">Upload</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+<section class="hero">
+  <h1>Your game film, in front of the coaches who recruit.</h1>
+  <p>Athletes upload raw highlight video from their games. College coaches search by sport, position, class, and state — and send visit requests directly.</p>
+  <div class="actions">
+    <a class="btn" href="/register?role=athlete">I'm an athlete</a>
+    <a class="btn btn-secondary" href="/register?role=coach">I'm a coach</a>
+  </div>
+</section>
+<% if (recent.length) { %>
+<section>
+  <h2>Latest highlights</h2>
+  <div class="grid">
+    <% recent.forEach(function (v) { %>
+      <article class="card video-card">
+        <%- include('partials/video-player', { filename: v.filename, mime: v.mime_type }) %>
+        <h3><a href="/videos/<%= v.id %>"><%= v.title %></a></h3>
+        <p class="muted"><a href="/athletes/<%= v.athlete_id %>"><%= v.athlete_name %></a><% if (v.sport) { %> · <%= v.sport %><% } %></p>
+      </article>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+<%- include('partials/footer') %>

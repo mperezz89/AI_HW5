@@ -1,0 +1,54 @@
+<%- include('partials/header') %>
+<h1>Hey, <%= currentUser.name.split(' ')[0] %></h1>
+<dl class="stats card">
+  <div><dt>Highlights</dt><dd><%= videos.length %></dd></div>
+  <div><dt>Total views</dt><dd><%= totalViews %></dd></div>
+  <div><dt>Visit requests</dt><dd><%= requests.length %></dd></div>
+  <div><dt>Pending</dt><dd><%= requests.filter(function (r) { return r.status === 'pending'; }).length %></dd></div>
+</dl>
+
+<h2>Visit requests from coaches</h2>
+<% if (!requests.length) { %>
+  <p class="muted">No requests yet. Keep your profile complete and upload fresh game film to get noticed.</p>
+<% } %>
+<% requests.forEach(function (r) { %>
+  <article class="card request">
+    <div class="request-head">
+      <div>
+        <strong><%= r.coach_name %></strong><% if (r.coach_title) { %>, <%= r.coach_title %><% } %>
+        <div class="muted small"><%= [r.school, r.division].filter(Boolean).join(' · ') || 'Program not listed' %></div>
+      </div>
+      <span class="status status-<%= r.status %>"><%= r.status %></span>
+    </div>
+    <p class="pre"><%= r.message %></p>
+    <p class="muted small">
+      <% if (r.proposed_date) { %>Proposed visit: <%= r.proposed_date %> · <% } %>
+      <% if (r.video_title) { %>Re: <a href="/videos/<%= r.video_id %>"><%= r.video_title %></a> · <% } %>
+      Sent <%= r.created_at.slice(0, 10) %>
+    </p>
+    <% if (r.status === 'pending') { %>
+      <form method="post" action="/visit-requests/<%= r.id %>/respond" class="form">
+        <label>Reply (optional) <input name="response_message" placeholder="Thanks coach! I'd love to visit."></label>
+        <div class="actions">
+          <button class="btn" name="decision" value="accept">Accept</button>
+          <button class="btn btn-secondary" name="decision" value="decline">Decline</button>
+        </div>
+      </form>
+    <% } else if (r.status === 'accepted') { %>
+      <p class="small">Coach contact: <a href="mailto:<%= r.coach_email %>"><%= r.coach_email %></a></p>
+    <% } %>
+  </article>
+<% }) %>
+
+<h2>Your highlights <a class="btn btn-small" href="/videos/new">Upload</a></h2>
+<% if (!videos.length) { %><p class="muted">Nothing uploaded yet.</p><% } %>
+<div class="grid">
+  <% videos.forEach(function (v) { %>
+    <article class="card video-card">
+      <%- include('partials/video-player', { filename: v.filename, mime: v.mime_type }) %>
+      <h3><a href="/videos/<%= v.id %>"><%= v.title %></a></h3>
+      <p class="muted small"><%= v.views %> views</p>
+    </article>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>
