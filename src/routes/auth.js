@@ -1,5 +1,6 @@
 const express = require('express');
 const { hashPassword, verifyPassword } = require('../auth');
+const { joinTeam } = require('../db');
 
 const router = express.Router();
 
@@ -35,11 +36,25 @@ router.post('/register', (req, res) => {
   const profileTable = form.role === 'athlete' ? 'athlete_profiles' : 'coach_profiles';
   db.prepare(`INSERT INTO ${profileTable} (user_id) VALUES (?)`).run(userId);
 
+  // A coach invited to a staff before signing up joins that team now.
+  let joined = null;
+  if (form.role === 'coach') {
+    const invite = db
+      .prepare('SELECT i.*, t.school, t.sport, t.division FROM team_invites i JOIN teams t ON t.id = i.team_id WHERE i.email = ? ORDER BY i.id LIMIT 1')
+      .get(form.email);
+    if (invite) {
+      joinTeam(db, userId, { id: invite.team_id, school: invite.school, sport: invite.sport, division: invite.division }, invite.title);
+      db.prepare('DELETE FROM team_invites WHERE email = ?').run(form.email);
+      joined = invite;
+    }
+  }
+
   req.session.regenerate(() => {
     req.session.userId = userId;
     req.session.flash = 'Welcome! Finish your profile so coaches can find you.';
     if (form.role === 'coach') req.session.flash = 'Welcome! Fill in your coach profile so athletes know who you are.';
-    res.redirect('/profile/edit');
+    if (joined) req.session.flash = `Welcome! You've joined the ${joined.school} ${joined.sport} coaching staff.`;
+    res.redirect(joined ? `/teams/${joined.team_id}` : '/profile/edit');
   });
 });
 

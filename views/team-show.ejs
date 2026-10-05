@@ -20,7 +20,11 @@
         <a class="btn btn-secondary" href="/messages/new?team=<%= team.id %>">Message team</a>
       </div>
     <% } else if (isTeamCoach) { %>
-      <a class="btn" href="/posts/new">New post</a>
+      <div class="actions flush">
+        <a class="btn" href="/posts/new">New post</a>
+        <a class="btn btn-secondary" href="/teams/<%= team.id %>/staff">Staff</a>
+        <a class="btn btn-secondary" href="/recruiting">Recruiting board</a>
+      </div>
     <% } %>
   </div>
 </section>

@@ -1,7 +1,7 @@
 <%- include('partials/header') %>
 <section class="card narrow">
   <h1>New team post</h1>
-  <p class="muted">Posting as <strong><%= team.school %> <%= team.sport %></strong>. Athletes who follow your team will see this in their feed.</p>
+  <p class="muted">Posting as <strong><%= team.school %> <%= team.sport %></strong>. Everyone on your staff posts to the same team page, and athletes who follow your team see it in their feed.</p>
   <% if (error) { %><p class="error"><%= error %></p><% } %>
   <form method="post" action="/posts" enctype="multipart/form-data" class="form">
     <label>Photo or video <input type="file" name="media" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" required></label>

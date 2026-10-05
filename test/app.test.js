@@ -120,7 +120,7 @@ test('coaches open a visit calendar to invited athletes, who book a time', async
   // Without an Athlete ID, a coach can't open their calendar to an athlete.
   let res = await coach(`/athletes/${athleteId}`);
   assert.doesNotMatch(res.text, /555-0100/);
-  assert.match(res.text, /Contact info is shared once/);
+  assert.match(res.text, /Contact info is shared with your staff once/);
   assert.match(res.text, /hasn't added an Athlete ID yet/);
   await athlete('/profile/edit', {
     method: 'POST',
@@ -406,8 +406,14 @@ test('coaches post to their team page; setup is required first', async () => {
   res = await athlete('/posts', { method: 'POST', body: postForm('hi') });
   assert.equal(res.status, 403);
 
-  // A second coach from the same school and sport joins the same team, regardless of capitalization.
-  await otherCoach('/profile/edit', { method: 'POST', form: { school: 'state university', sport: 'Basketball', title: 'Coach' } });
+  // A second coach can't join an existing staff on their own (any capitalization of the name) ...
+  res = await otherCoach('/profile/edit', { method: 'POST', form: { school: 'state university', sport: 'Basketball', title: 'Coach' } });
+  assert.equal(res.status, 400);
+  assert.match(res.text, /already has a coaching staff here/);
+  // ... a staff member adds them by email instead.
+  const kimTeamId = (await coach('/teams/mine')).location.split('/').pop();
+  res = await coach(`/teams/${kimTeamId}/staff`, { method: 'POST', form: { email: 'LEE@college.edu', title: 'Coach' } });
+  assert.equal(res.location, `/teams/${kimTeamId}/staff`);
   await otherCoach('/posts', { method: 'POST', body: postForm('Camp registration is open') });
   res = await otherCoach('/teams/mine');
   const teamPath = res.location;
@@ -646,17 +652,22 @@ test('coaches fill in title, Team ID, team name, and team sport', async () => {
   assert.match(res.text, /<option selected>Recruiter<\/option>/);
   assert.match(res.text, /value="LAKE-WBB"/);
 
-  // Another coach entering the same Team ID (any capitalization) joins that team under its name.
+  // Another coach entering the same Team ID (any capitalization) can't join a staffed team on their own.
   const morgan = client();
   await signUp(morgan, { name: 'Morgan Fry', email: 'morgan@lakeside.edu', role: 'coach' });
   res = await morgan('/profile/edit', {
     method: 'POST',
     form: { title: 'Assistant', team_code: 'lake-wbb', school: 'Lakeside Univ.', sport: 'Basketball' },
   });
-  assert.equal(res.status, 302);
-  res = await morgan(res.location);
-  assert.match(res.text, /registered to Lakeside University/);
-  const teamPath = res.text.match(/<a class="post-team" href="(\/teams\/\d+)"/)[1];
+  assert.equal(res.status, 400);
+  assert.match(res.text, /Lakeside University Basketball already has a coaching staff here/);
+
+  // Once Drew adds Morgan, Morgan's profile carries the team's details.
+  const teamPath = (await drew('/teams/mine')).location;
+  await drew(`${teamPath}/staff`, { method: 'POST', form: { email: 'morgan@lakeside.edu', title: 'Assistant' } });
+  res = await morgan('/profile/edit');
+  assert.match(res.text, /value="LAKE-WBB"/);
+  assert.match(res.text, /value="Lakeside University"/);
   res = await morgan(teamPath);
   assert.match(res.text, /Team ID LAKE-WBB/);
   assert.match(res.text, /Drew Hall/);
@@ -670,7 +681,17 @@ test('coaches fill in title, Team ID, team name, and team sport', async () => {
   assert.match(res.text, /belongs to Lakeside University Basketball/);
   res = await sam('/profile/edit', { method: 'POST', form: { team_code: 'OTHER-1', school: 'Lakeside University', sport: 'Basketball' } });
   assert.equal(res.status, 400);
-  assert.match(res.text, /already registered with a different Team ID/);
+  assert.match(res.text, /already has a coaching staff here/);
+
+  // Staff can fix their team's name from their own profile without leaving the team.
+  res = await drew('/profile/edit', {
+    method: 'POST',
+    form: { title: 'Recruiter', team_code: 'LAKE-WBB', school: 'Lakeside University Lakers', sport: 'Basketball' },
+  });
+  assert.equal(res.status, 302);
+  res = await morgan(teamPath);
+  assert.match(res.text, /<h1>Lakeside University Lakers<\/h1>/);
+  assert.match(res.text, /Drew Hall/);
 });
 
 test('existing free-text coach titles map onto Coach, Recruiter, or Assistant', () => {
@@ -689,4 +710,85 @@ test('existing free-text coach titles map onto Coach, Recruiter, or Assistant', 
   const after = db.prepare('SELECT title FROM coach_profiles ORDER BY user_id').all().map((r) => r.title);
   assert.deepEqual(after, Object.values(titles));
   db.close();
+});
+
+test('coaching staff share a team profile, inbox, recruiting board, and posting', async () => {
+  const teamId = (await coach('/teams/mine')).location.split('/').pop();
+  const staffPath = `/teams/${teamId}/staff`;
+
+  let res = await coach(staffPath);
+  assert.match(res.text, /Coach Kim/);
+  assert.match(res.text, /Coach Lee/);
+
+  // Only staff can see or change the staff list; athletes can't use the recruiting board.
+  const fox = client();
+  await fox('/login', { method: 'POST', form: { email: 'fox@tech.edu', password: 'password123' } });
+  assert.equal((await fox(staffPath)).status, 403);
+  assert.equal((await fox(staffPath, { method: 'POST', form: { email: 'x@y.edu' } })).status, 403);
+  assert.equal((await athlete('/recruiting')).status, 403);
+
+  // Adding people: athletes and other teams' coaches are refused.
+  res = await coach(staffPath, { method: 'POST', form: { email: 'jordan@example.com' } });
+  assert.match(res.text, /belongs to an athlete account/);
+  res = await coach(staffPath, { method: 'POST', form: { email: 'fox@tech.edu' } });
+  assert.match(res.text, /on another team&#39;s staff/);
+
+  // A recruiter without an account is invited, and joins when they sign up.
+  res = await coach(staffPath, { method: 'POST', form: { email: 'pat@state.edu', title: 'Recruiter' } });
+  res = await coach(staffPath);
+  assert.match(res.text, /Invited, waiting to sign up[\s\S]*pat@state.edu/);
+  const pat = client();
+  res = await pat('/register', { method: 'POST', form: { name: 'Pat Recruiter', email: 'pat@state.edu', role: 'coach', password: 'password123' } });
+  assert.equal(res.location, `/teams/${teamId}`);
+  res = await pat('/dashboard');
+  assert.match(res.text, /Recruiter · State University · Basketball/);
+  assert.doesNotMatch((await coach(staffPath)).text, /Invited, waiting to sign up/);
+
+  // The new recruiter posts as the team and reads the team inbox.
+  res = await pat('/posts', { method: 'POST', body: postForm('Official visit weekend recap') });
+  res = await athlete(`/teams/${teamId}`);
+  assert.match(res.text, /Pat Recruiter/);
+  res = await pat('/messages');
+  assert.match(res.text, /Interested in your summer camp|Camp info is on our team page/);
+
+  // Shared recruiting board: add by Athlete ID, edit notes together.
+  res = await coach('/recruiting', { method: 'POST', form: { athlete_code: 'nope' } });
+  assert.match((await coach('/recruiting')).text, /No athlete has the Athlete ID nope/);
+  await coach('/recruiting', { method: 'POST', form: { athlete_code: 'ncaa-2027-0042', notes: 'Elite court vision.' } });
+  res = await pat('/recruiting');
+  assert.match(res.text, /Jordan Rivers/);
+  assert.match(res.text, /Elite court vision\./);
+  assert.match(res.text, /Added by Coach Kim/);
+  await pat(`/recruiting/${athleteId}/notes`, { method: 'POST', form: { notes: 'Elite court vision. Watched vs. North — great defense.' } });
+  res = await coach('/recruiting');
+  assert.match(res.text, /great defense/);
+  assert.match(res.text, /updated by Pat Recruiter/);
+  res = await coach('/recruiting', { method: 'POST', form: { athlete_id: String(athleteId) } });
+  assert.equal(res.location, `/athletes/${athleteId}`);
+  assert.match((await coach(`/athletes/${athleteId}`)).text, /already on your team&#39;s recruiting board/);
+
+  // Every staff member's visits are visible, and contact info is shared across the staff.
+  res = await pat('/recruiting');
+  assert.match(res.text, /Staff visit invitations[\s\S]*Jordan Rivers[\s\S]*Coach Kim[\s\S]*Scheduled/);
+  res = await pat(`/athletes/${athleteId}`);
+  assert.match(res.text, /jordan@example.com/);
+  assert.match(res.text, /Your staff's visits/);
+  assert.match(res.text, /great defense/);
+  assert.doesNotMatch((await fox(`/athletes/${athleteId}`)).text, /jordan@example.com/);
+  assert.doesNotMatch((await fox(`/athletes/${athleteId}`)).text, /great defense/);
+
+  // Removing someone ends their access to the board and the team inbox.
+  const patId = (await coach(staffPath)).text.match(/href="\/coaches\/(\d+)">Pat Recruiter/)[1];
+  const teamThread = (await pat('/messages')).text.match(/href="(\/messages\/\d+)#latest"/)[1];
+  await coach(`${staffPath}/${patId}/remove`, { method: 'POST' });
+  assert.equal((await pat('/recruiting')).location, '/profile/edit');
+  assert.equal((await pat(teamThread)).status, 404);
+  assert.equal((await pat(staffPath)).status, 403);
+  assert.doesNotMatch((await pat(`/athletes/${athleteId}`)).text, /jordan@example.com/);
+
+  // Cancelling a pending invite.
+  await coach(staffPath, { method: 'POST', form: { email: 'later@state.edu' } });
+  const inviteId = (await coach(staffPath)).text.match(/\/invites\/(\d+)\/cancel/)[1];
+  await coach(`/teams/${teamId}/invites/${inviteId}/cancel`, { method: 'POST' });
+  assert.doesNotMatch((await coach(staffPath)).text, /later@state.edu/);
 });

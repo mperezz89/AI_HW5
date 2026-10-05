@@ -2,6 +2,7 @@ const express = require('express');
 const { requireAuth } = require('../auth');
 const { missingPreferredFields } = require('../constants');
 const { followStats } = require('./people');
+const { myTeam } = require('./staff');
 const { nowLocal, upcomingSlots } = require('../calendar');
 
 const router = express.Router();
@@ -90,6 +91,9 @@ router.get('/athletes/:id', (req, res, next) => {
   let visitRequests = [];
   let canSeeContact = isOwner;
   let coachOpenTimes = 0;
+  let team = null;
+  let recruit = null;
+  let staffVisits = [];
   if (req.user && req.user.role === 'coach') {
     visitRequests = db
       .prepare(
@@ -97,8 +101,27 @@ router.get('/athletes/:id', (req, res, next) => {
          WHERE r.coach_id = ? AND r.athlete_id = ? ORDER BY r.created_at DESC, r.id DESC`
       )
       .all(req.user.id, athlete.id);
-    canSeeContact = visitRequests.some((r) => r.status === 'accepted');
     coachOpenTimes = upcomingSlots(db, req.user.id, { openOnly: true }).length;
+    team = myTeam(db, req.user.id);
+    if (team) {
+      recruit = db
+        .prepare(
+          `SELECT r.*, u.name AS updated_by_name FROM recruits r LEFT JOIN users u ON u.id = r.updated_by
+           WHERE r.team_id = ? AND r.athlete_id = ?`
+        )
+        .get(team.id, athlete.id);
+      staffVisits = db
+        .prepare(
+          `SELECT r.*, c.name AS coach_name, s.starts_at, s.duration_minutes
+           FROM visit_requests r JOIN coach_profiles cp ON cp.user_id = r.coach_id JOIN users c ON c.id = r.coach_id
+           LEFT JOIN visit_slots s ON s.id = r.slot_id
+           WHERE cp.team_id = ? AND r.athlete_id = ? AND r.coach_id != ?
+           ORDER BY r.created_at DESC`
+        )
+        .all(team.id, athlete.id, req.user.id);
+    }
+    // Contact info is shared with the whole staff once the athlete schedules a visit with any of them.
+    canSeeContact = [...visitRequests, ...staffVisits].some((r) => r.status === 'accepted');
   }
   const now = nowLocal();
   const hasOpenInvite = visitRequests.some(
@@ -113,6 +136,9 @@ router.get('/athletes/:id', (req, res, next) => {
     canSeeContact,
     visitRequests,
     hasOpenInvite,
+    team,
+    recruit,
+    staffVisits,
     coachOpenTimes,
     preselectVideo: req.query.video || '',
     missing: isOwner ? missingPreferredFields(athlete) : [],

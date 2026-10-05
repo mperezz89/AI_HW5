@@ -1,0 +1,66 @@
+<%- include('partials/header') %>
+<div class="calendar-layout">
+  <section>
+    <h1>Recruiting board</h1>
+    <p class="muted">Shared by the <a href="/teams/<%= team.id %>/staff"><%= team.school %> <%= team.sport %> staff</a>. Notes are visible only to your staff.</p>
+    <% if (!recruits.length) { %>
+      <p class="card muted">No athletes on the board yet. Add one by Athlete ID, or from an athlete's profile.</p>
+    <% } %>
+    <% recruits.forEach(function (r) { %>
+      <article class="card recruit" id="recruit-<%= r.athlete_id %>">
+        <div class="request-head">
+          <div>
+            <a class="post-team" href="/athletes/<%= r.athlete_id %>"><%= r.name %></a>
+            <% if (r.star_rating) { %><span class="stars small"><%= stars(r.star_rating) %></span><% } %>
+            <div class="muted small">
+              <%= [r.athlete_code, r.sport, r.position, r.grad_year && ('Class of ' + r.grad_year), r.national_rank && ('#' + r.national_rank + ' nationally')].filter(Boolean).join(' · ') %>
+            </div>
+            <div class="muted small"><%= [r.high_school, [r.city, r.state].filter(Boolean).join(', ')].filter(Boolean).join(' — ') %> · <%= r.video_count %> highlight<%= r.video_count === 1 ? '' : 's' %></div>
+          </div>
+          <form method="post" action="/recruiting/<%= r.athlete_id %>/remove" class="inline" onsubmit="return confirm('Remove from the board for your whole staff?')">
+            <button class="btn btn-secondary btn-small">Remove</button>
+          </form>
+        </div>
+        <form method="post" action="/recruiting/<%= r.athlete_id %>/notes" class="form">
+          <label class="small">Staff notes <textarea name="notes" rows="2" maxlength="2000"><%= r.notes || '' %></textarea></label>
+          <div class="actions flush">
+            <button class="btn btn-secondary btn-small">Save notes</button>
+            <span class="muted small" style="align-self: center">Added by <%= r.added_by_name || 'former staff' %><% if (r.updated_by_name) { %> · updated by <%= r.updated_by_name %> <%= timeAgo(r.updated_at) %><% } %></span>
+          </div>
+        </form>
+      </article>
+    <% }) %>
+
+    <h2>Staff visit invitations</h2>
+    <% if (!visits.length) { %><p class="muted">Nobody on your staff has opened their calendar to an athlete yet.</p><% } else { %>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>Athlete</th><th>Staff member</th><th>Visit time</th><th>Status</th></tr></thead>
+        <tbody>
+          <% visits.forEach(function (v) { %>
+            <tr>
+              <td><a href="/athletes/<%= v.athlete_id %>"><%= v.athlete_name %></a><div class="small muted athlete-id"><%= v.athlete_code || '' %></div></td>
+              <td><%= v.coach_name %><%= v.coach_id === currentUser.id ? ' (you)' : '' %></td>
+              <td><%= v.starts_at ? formatSlot(v.starts_at, v.duration_minutes) : '—' %></td>
+              <td><span class="status status-<%= v.status %>"><%= v.status === 'accepted' && v.starts_at ? 'Scheduled' : v.status === 'pending' ? 'Choosing a time' : v.status %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table></div>
+    <% } %>
+  </section>
+  <aside>
+    <div class="card">
+      <h2 class="side-title">Add a recruit</h2>
+      <form method="post" action="/recruiting" class="form">
+        <label>Athlete ID <input name="athlete_code" required class="athlete-id" placeholder="e.g. NCAA-2027-0042"></label>
+        <label>Staff notes (optional) <textarea name="notes" rows="3" maxlength="2000"></textarea></label>
+        <button class="btn">Add to board</button>
+      </form>
+    </div>
+    <div class="card">
+      <h2 class="side-title">Team</h2>
+      <p class="small"><a href="/teams/<%= team.id %>">Team page</a> · <a href="/teams/<%= team.id %>/staff">Staff</a> · <a href="/messages">Team inbox</a></p>
+    </div>
+  </aside>
+</div>
+<%- include('partials/footer') %>

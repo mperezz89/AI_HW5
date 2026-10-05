@@ -33,7 +33,22 @@ A web app where **athletes** upload raw game highlight videos to get exposure, a
 **Coaches**
 - Sign up as a coach and fill in your **coach profile**: **title (Coach, Recruiter, or Assistant), Team ID, team name, and team sport**. Division is optional. Coaches enter these themselves.
 - Coaches see their profile under "My profile". A checklist on the dashboard shows which fields are still missing.
-- **Team ID** decides which team page a coach belongs to. Coaches who enter the same Team ID (matching ignores case) share one team, even if they typed the team name differently, and they join under the name already registered for that team. A Team ID can't be reused for a different sport, and a team registered with one Team ID can't be claimed with another. Without a Team ID, coaches are matched by team name and sport.
+- **Team ID** identifies a team. The first coach to enter a Team ID, or a team name and sport, creates that team. A Team ID can't be reused for a different sport, and matching ignores case.
+
+**Shared coaching staff**
+- A team's coaches and recruiters share one team profile.
+- **Joining a team:** once a team has staff, a coach can't join it by typing its Team ID or name. A staff member has to add them on the team's **Staff** page by email, choosing a title (Coach, Recruiter, or Assistant).
+  - Someone who already has a coach account joins right away.
+  - Anyone else joins automatically when they sign up as a coach with that email.
+  - A coach already on another team's staff has to leave that team first.
+- **Managing staff:** staff members can remove other members, leave the team, and cancel pending invites. A team with no staff left can be claimed again by entering its Team ID or name.
+- **What staff share:**
+  - posting as the team;
+  - the team inbox;
+  - the **recruiting board**, a shared list of athletes added by Athlete ID or from a profile, with notes any staff member can edit. Each entry shows who added it and who last updated it;
+  - a view of every staff member's visit invitations and scheduled visits.
+- **Contact info:** an athlete's contact info is visible to the whole staff once they schedule a visit with any staff member.
+- **Team name changes:** staff who edit their own profile stay on their team. A corrected team name renames the team for everyone.
 - Search athletes by name, school, city, or Athlete ID. Filter by sport, position, grad year, state, and minimum star ranking, and sort by national ranking.
 - Watch highlights. Video views are counted, and an athlete's own views are not.
 - **Visit calendar:** add open visit times with a date, start time, length, how many athletes can attend, and location or notes. A single time can be a one-on-one visit or a group event such as a junior day.
@@ -85,7 +100,8 @@ src/
   calendar.js       Visit calendar time helpers
   routes/           auth, profile, videos, athletes (search/profile), visits (dashboard + requests),
                     feed (home feed, teams, team posts, likes, follows), people (follows, coach profiles),
-                    messages (direct and team-inbox messaging), calendar (visit times and booking)
+                    messages (direct and team-inbox messaging), calendar (visit times and booking),
+                    staff (team staff and shared recruiting board)
 views/              EJS templates
 public/styles.css   Styles (light and dark mode)
 test/app.test.js    End-to-end tests
@@ -98,6 +114,7 @@ test/app.test.js    End-to-end tests
 - Sessions: replace the in-memory session store with a persistent one, such as Redis or SQLite.
 - Security: add CSRF tokens, rate limiting on login and upload, email verification, and verification that coaches really work for the programs they list.
 - Verification: rankings and Athlete IDs are self-reported. Consider verifying them against an official source or labeling them as self-reported.
+- Staff: staff membership is managed by email, with no confirmation step and no roles. Any staff member can add or remove anyone. Consider staff admins, email verification, and an audit log for changes to the recruiting board.
 - Teams: Team IDs and team names are self-reported. Check Team IDs against an official list of programs, and verify that coaches belong to the team they post as. Without a Team ID, "Notre Dame" and "University of Notre Dame" still become separate teams.
 - Feed: comments, Stories-style highlights, notifications when a followed team posts, and liking without reloading the page.
 - Visit calendar: times are entered and shown as campus-local time without a time zone. Add per-school time zones, calendar file (.ics) or Google Calendar invites, reminders, and a way for coaches to move or cancel booked visits with notice to the athlete. Consider recruiting-calendar rules for official and unofficial visits.

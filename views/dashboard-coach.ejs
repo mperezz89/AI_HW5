@@ -25,6 +25,8 @@
   <a class="btn" href="/calendar">Visit calendar (<%= openTimes %> open)</a>
   <a class="btn btn-secondary" href="/athletes<%= profile.sport ? '?sport=' + encodeURIComponent(profile.sport) : '' %>">Browse athletes</a>
   <% if (profile.team_id) { %>
+    <a class="btn btn-secondary" href="/recruiting">Recruiting board</a>
+    <a class="btn btn-secondary" href="/teams/<%= profile.team_id %>/staff">Staff</a>
     <a class="btn btn-secondary" href="/teams/<%= profile.team_id %>">Your team page</a>
     <a class="btn btn-secondary" href="/posts/new">New team post</a>
   <% } %>
@@ -34,7 +36,7 @@
 <% if (!requests.length) { %>
   <p class="muted">You haven't opened your calendar to any athletes yet. Add open times to <a href="/calendar">your visit calendar</a>, then open it to athletes by their Athlete ID.</p>
 <% } else { %>
-  <table class="table">
+  <div class="table-wrap"><table class="table">
     <thead><tr><th>Athlete</th><th>Sport / position</th><th>Class</th><th>Visit time</th><th>Status</th></tr></thead>
     <tbody>
       <% requests.forEach(function (r) { %>
@@ -48,6 +50,6 @@
         </tr>
       <% }) %>
     </tbody>
-  </table>
+  </table></div>
 <% } %>
 <%- include('partials/footer') %>

@@ -32,7 +32,7 @@
   <% if (canSeeContact) { %>
     <p class="contact"><strong>Contact:</strong> <a href="mailto:<%= athlete.email %>"><%= athlete.email %></a><% if (athlete.phone) { %> · <%= athlete.phone %><% } %></p>
   <% } else if (currentUser && currentUser.role === 'coach') { %>
-    <p class="muted small">Contact info is shared once the athlete schedules a visit with you.</p>
+    <p class="muted small">Contact info is shared with your staff once the athlete schedules a visit with any of you.</p>
   <% } %>
 </section>
 
@@ -52,6 +52,35 @@
 </div>
 
 <% if (currentUser && currentUser.role === 'coach') { %>
+<% if (team) { %>
+<section class="card" id="board">
+  <h2>Your team's recruiting board</h2>
+  <% if (recruit) { %>
+    <p class="small muted">On the <%= team.school %> board<% if (recruit.updated_by_name) { %> · notes last updated by <%= recruit.updated_by_name %> <%= timeAgo(recruit.updated_at) %><% } %>. Only your staff can see these notes.</p>
+    <form method="post" action="/recruiting/<%= athlete.id %>/notes" class="form">
+      <input type="hidden" name="back" value="profile">
+      <label>Staff notes <textarea name="notes" rows="3" maxlength="2000" placeholder="Evaluation, contact history, next steps…"><%= recruit.notes || '' %></textarea></label>
+      <div class="actions flush"><button class="btn btn-secondary btn-small">Save notes</button> <a class="small" href="/recruiting">Open recruiting board</a></div>
+    </form>
+  <% } else { %>
+    <form method="post" action="/recruiting" class="form">
+      <input type="hidden" name="athlete_id" value="<%= athlete.id %>">
+      <p class="muted small flush">Add <%= athlete.name %> to the board your whole staff shares, with notes.</p>
+      <label>Staff notes (optional) <textarea name="notes" rows="2" maxlength="2000"></textarea></label>
+      <div><button class="btn btn-small">Add to recruiting board</button></div>
+    </form>
+  <% } %>
+  <% if (staffVisits.length) { %>
+    <h3 class="side-title">Your staff's visits</h3>
+    <% staffVisits.forEach(function (r) { %>
+      <p class="small"><%= r.coach_name %>:
+        <% if (r.status === 'accepted' && r.starts_at) { %><span class="status status-accepted">Scheduled</span> <%= formatSlot(r.starts_at, r.duration_minutes) %>
+        <% } else { %><span class="status status-<%= r.status %>"><%= r.status === 'pending' ? 'Choosing a time' : r.status %></span><% } %></p>
+    <% }) %>
+  <% } %>
+</section>
+<% } %>
+
 <section class="card" id="request">
   <h2>Open your calendar</h2>
   <% visitRequests.forEach(function (r) { %>

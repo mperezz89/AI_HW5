@@ -1,0 +1,52 @@
+<%- include('partials/header') %>
+<div class="calendar-layout">
+  <section>
+    <p><a href="/teams/<%= team.id %>">← <%= team.school %> <%= team.sport %></a></p>
+    <h1>Coaching staff</h1>
+    <p class="muted">Everyone on your staff shares this team's profile. They can post as the team, read and reply to the team inbox, and use the shared recruiting board. Each athlete's contact info is visible to the whole staff once they schedule a visit with any of you.</p>
+    <% staff.forEach(function (m) { var me = m.id === currentUser.id; %>
+      <div class="card person-row">
+        <a class="team-avatar" href="/coaches/<%= m.id %>" aria-hidden="true"><%= m.name.trim().charAt(0).toUpperCase() %></a>
+        <div class="grow">
+          <a class="post-team" href="/coaches/<%= m.id %>"><%= m.name %></a><%= me ? ' (you)' : '' %>
+          <div class="muted small"><%= [m.title, m.email, m.posts + ' post' + (m.posts === 1 ? '' : 's')].filter(Boolean).join(' · ') %></div>
+        </div>
+        <form method="post" action="/teams/<%= team.id %>/staff/<%= m.id %>/remove" class="inline"
+              onsubmit="return confirm('<%= me ? 'Leave this team? You will lose access to its recruiting board and inbox.' : 'Remove ' + m.name.replace(/'/g, '') + ' from your staff?' %>')">
+          <button class="btn btn-secondary btn-small"><%= me ? 'Leave team' : 'Remove' %></button>
+        </form>
+      </div>
+    <% }) %>
+    <% if (invites.length) { %>
+      <h2 class="day-title">Invited, waiting to sign up</h2>
+      <% invites.forEach(function (i) { %>
+        <div class="card person-row">
+          <div class="grow">
+            <strong><%= i.email %></strong>
+            <div class="muted small"><%= i.title || 'Staff' %><%= i.invited_by_name ? ' · invited by ' + i.invited_by_name : '' %></div>
+          </div>
+          <form method="post" action="/teams/<%= team.id %>/invites/<%= i.id %>/cancel" class="inline">
+            <button class="btn btn-secondary btn-small">Cancel</button>
+          </form>
+        </div>
+      <% }) %>
+    <% } %>
+  </section>
+  <aside>
+    <div class="card">
+      <h2 class="side-title">Add a coach or recruiter</h2>
+      <% if (error) { %><p class="error"><%= error %></p><% } %>
+      <form method="post" action="/teams/<%= team.id %>/staff" class="form">
+        <label>Email <input type="email" name="email" required value="<%= form.email || '' %>" placeholder="name@school.edu"></label>
+        <label>Title
+          <select name="title">
+            <% COACH_TITLES.forEach(function (t) { %><option <%= (form.title || 'Recruiter') === t ? 'selected' : '' %>><%= t %></option><% }) %>
+          </select>
+        </label>
+        <button class="btn">Add to staff</button>
+      </form>
+      <p class="muted small">If they already have a coach account, they join right away. Otherwise they join when they sign up as a coach with this email.</p>
+    </div>
+  </aside>
+</div>
+<%- include('partials/footer') %>

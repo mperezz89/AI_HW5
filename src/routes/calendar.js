@@ -196,7 +196,7 @@ router.post('/visit-requests/:id/schedule', requireRole('athlete'), (req, res, n
 
   req.session.flash = request.slot_id
     ? 'Visit rescheduled.'
-    : `Visit scheduled with ${request.coach_name}! They can now see your contact info.`;
+    : `Visit scheduled with ${request.coach_name}! ${request.school ? `The ${request.school} coaching staff` : 'They'} can now see your contact info.`;
   res.redirect('/dashboard');
 });
 
